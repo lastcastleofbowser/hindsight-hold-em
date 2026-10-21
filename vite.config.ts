@@ -34,7 +34,9 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;
-  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+  const url = new URL(req.url);
+  // Never cache the account/history API: it must always be live.
+  if (req.method !== 'GET' || url.origin !== self.location.origin || url.pathname.includes('/api/')) return;
   if (req.mode === 'navigate') {
     // Network first for the page so updates arrive, cached shell when offline.
     event.respondWith(fetch(req).catch(() => caches.match('./index.html')));
@@ -53,8 +55,11 @@ self.addEventListener('fetch', (event) => {
   };
 }
 
-// The Friends tab talks to the game server (npm run server) at /ws.
-const friendsProxy = { '/ws': { target: 'ws://localhost:8787', ws: true } };
+// Friends (/ws) and accounts (/api) are served by the game server (npm run server).
+const friendsProxy = {
+  '/ws': { target: 'ws://localhost:8787', ws: true },
+  '/api': { target: 'http://localhost:8787' },
+};
 
 export default defineConfig({
   base: './',

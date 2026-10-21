@@ -1,4 +1,4 @@
-import { legalActions, potSize } from '../engine/game';
+import { legalActions, netResult, potSize } from '../engine/game';
 import type { HandReview } from '../engine/review';
 import { useGame } from '../hooks/useGame';
 import type { Settings } from '../hooks/useSettings';
@@ -27,7 +27,6 @@ export function PlayView({ settings, active, onDiscuss }: Props) {
   useAutoTour('play-feedback', active && !!g.coach?.feedback && !g.game?.finished);
   useAutoTour('play-summary', active && !!g.game?.finished && !!g.review);
   const { game, hero, analysis, review } = g;
-  const showOdds = showOddsPanel;
   const accuracy = g.session.verdicts.great + g.session.verdicts.good;
   const graded = accuracy + g.session.verdicts.questionable + g.session.verdicts.mistake;
 
@@ -47,10 +46,57 @@ export function PlayView({ settings, active, onDiscuss }: Props) {
   }
 
   const toCall = g.heroToAct ? legalActions(game).callAmount : 0;
+  const net = game.finished ? netResult(game, hero.id) : 0;
+
+  // The action area always sits directly under the table, so the next thing to press is never off-screen.
+  let actionArea: React.ReactNode;
+  if (game.finished && review) {
+    actionArea = (
+      <div className="result-bar" data-tour="summary-result">
+        <span className={`result-big ${net > 0 ? 'win' : net < 0 ? 'loss' : ''}`}>
+          {net > 0 ? `+${net}` : net} chips
+        </span>
+        <div className="row-btns" style={{ marginTop: 0 }}>
+          {review.decisions.length > 0 && (
+            <button className="btn ghost" onClick={() => onDiscuss(review, game.handNumber)} data-tour="discuss">
+              Discuss with coach
+            </button>
+          )}
+          <button className="btn primary" onClick={g.dealNext} autoFocus data-tour="next-hand">
+            Deal next hand
+          </button>
+        </div>
+      </div>
+    );
+  } else if (g.heroToAct && !g.holdTable) {
+    actionArea = <ActionBar game={game} onAction={g.heroAct} shortcuts={active} />;
+  } else if (g.holdTable && g.coach?.awaitingWhy) {
+    actionArea = (
+      <div className="result-bar">
+        <span className="muted">The coach is asking why you made that move — answer in the Coach panel, or skip.</span>
+        <button className="btn ghost" onClick={() => g.answerWhy([], '')}>
+          Skip
+        </button>
+      </div>
+    );
+  } else if (g.holdTable) {
+    actionArea = (
+      <div className="result-bar">
+        <span className="muted">Read the coach's feedback, then carry on.</span>
+        <button className="btn primary" onClick={g.resume}>
+          Continue
+        </button>
+      </div>
+    );
+  } else {
+    actionArea = (
+      <div className="waiting">{hero.folded ? 'You folded. Finishing the hand…' : `Waiting for ${game.players[game.toAct]?.name ?? 'the dealer'}…`}</div>
+    );
+  }
 
   return (
-    <div className="play-layout">
-      <div>
+    <div className="play-layout fit">
+      <div className="play-main">
         <div className="session-bar" aria-label="Session stats" data-tour="session-stats">
           <span className="stat">
             Hand <b>#{game.handNumber}</b>
@@ -60,33 +106,23 @@ export function PlayView({ settings, active, onDiscuss }: Props) {
             <b className={g.session.net > 0 ? 'pos' : g.session.net < 0 ? 'neg' : ''}>
               {g.session.net > 0 ? '+' : ''}
               {g.session.net}
-            </b>{' '}
-            chips
+            </b>
           </span>
           <span className="stat">
-            Good decisions <b>{graded ? `${Math.round((accuracy / graded) * 100)}%` : '—'}</b> of {graded}
+            Good decisions <b>{graded ? `${Math.round((accuracy / graded) * 100)}%` : '—'}</b>
           </span>
           <span className="stat">
-            Blinds <b>{game.smallBlind}/{game.bigBlind}</b> · stacks reset each hand
+            Blinds <b>{game.smallBlind}/{game.bigBlind}</b>
           </span>
         </div>
-
-        <PokerTable game={game} heroHandName={showOdds ? analysis?.threats?.hero.name : undefined} />
-
-        {game.finished && review ? (
-          <HandSummary game={game} review={review} reveals={g.reveals} beginner={settings.beginnerMode} onNext={g.dealNext} onDiscuss={() => onDiscuss(review, game.handNumber)} />
-        ) : g.heroToAct && !g.holdTable ? (
-          <ActionBar game={game} onAction={g.heroAct} shortcuts={active} />
-        ) : (
-          <div className="action-bar">
-            <div className="waiting">
-              {g.holdTable ? 'Table paused — answer the coach to continue.' : hero.folded ? 'You folded. Finishing the hand…' : `Waiting for ${game.players[game.toAct]?.name ?? 'the dealer'}…`}
-            </div>
-          </div>
-        )}
+        <div className="table-area">
+          <PokerTable game={game} heroHandName={showOddsPanel ? analysis?.threats?.hero.name : undefined} />
+        </div>
+        <div className="action-area">{actionArea}</div>
       </div>
 
       <div className="side">
+        {game.finished && review && <HandSummary game={game} review={review} reveals={g.reveals} beginner={settings.beginnerMode} />}
         <CoachPanel
           mode={settings.coachMode}
           coach={g.coach}
@@ -97,7 +133,7 @@ export function PlayView({ settings, active, onDiscuss }: Props) {
           onAnswer={g.answerWhy}
           onResume={g.resume}
         />
-        {showOdds && (
+        {showOddsPanel && (
           <OddsPanel
             analysis={analysis}
             readsEquity={g.heroContext?.rangeEquity?.equity}

@@ -66,4 +66,46 @@ describe('game engine', () => {
       expect(s.winners.reduce((sum, w) => sum + w.amount, 0)).toBe(potSize(s));
     }
   });
+
+  it('splits side pots when a short stack is all-in', () => {
+    let s = newHand({ seats: table(3), handNumber: 1, buttonIndex: 0, startingStack: 1000, stacks: [1000, 100, 1000], smallBlind: 5, bigBlind: 10, rng: seededRng(4) });
+    // Button raises big, short stack (SB) calls all-in for 100, BB calls.
+    s = applyAction(s, { type: 'raise', to: 400 });
+    s = applyAction(s, { type: 'call' });
+    s = applyAction(s, { type: 'call' });
+    while (!s.finished) s = applyAction(s, { type: legalActions(s).canCheck ? 'check' : 'call' });
+    expect(s.players[1].totalCommitted).toBe(100);
+    const total = s.players.reduce((n, p) => n + p.stack, 0);
+    expect(total).toBe(2100);
+    // The short stack can win at most the main pot: 3 × 100.
+    const short = s.winners.find((w) => w.playerId === 1)?.amount ?? 0;
+    expect(short).toBeLessThanOrEqual(300);
+    expect(s.winners.reduce((n, w) => n + w.amount, 0)).toBe(potSize(s));
+  });
+
+  it('returns an uncalled bet to the bettor at showdown', () => {
+    let s = newHand({ seats: table(2), handNumber: 1, buttonIndex: 0, startingStack: 1000, stacks: [1000, 50], smallBlind: 5, bigBlind: 10 });
+    s = applyAction(s, { type: 'raise', to: 1000 }); // button shoves 1000 into a 50 stack
+    s = applyAction(s, { type: 'call' }); // BB calls all-in for 50
+    expect(s.finished).toBe(true);
+    // Whatever happens, the big stack keeps at least 950 (its uncalled chips).
+    expect(s.players[0].stack).toBeGreaterThanOrEqual(950);
+    expect(s.players[0].stack + s.players[1].stack).toBe(1050);
+  });
+
+  it('conserves chips with uneven stacks across many bot hands', () => {
+    const rng = seededRng(99);
+    for (let hand = 0; hand < 1500; hand++) {
+      const n = 2 + (hand % 5);
+      const stacks = Array.from({ length: n }, () => 20 + Math.floor(rng() * 2000));
+      let s = newHand({ seats: table(n), handNumber: hand, buttonIndex: hand % n, startingStack: 1000, stacks, smallBlind: 5, bigBlind: 10, rng });
+      let steps = 0;
+      while (!s.finished) {
+        s = applyAction(s, decideBotAction(s, rng));
+        if (++steps > 300) throw new Error('hand did not terminate');
+      }
+      expect(s.players.reduce((sum, p) => sum + p.stack, 0)).toBe(stacks.reduce((a, b) => a + b, 0));
+      expect(s.players.every((p) => p.stack >= 0)).toBe(true);
+    }
+  });
 });

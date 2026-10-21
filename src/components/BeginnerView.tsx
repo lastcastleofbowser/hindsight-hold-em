@@ -129,9 +129,18 @@ export function BeginnerView({ settings, active }: Props) {
   const strength = heroContext ? strengthLabel(heroContext) : null;
 
   return (
-    <div className="play-layout beginner">
-      <div>
-        <PokerTable game={game} longPositions heroHandName={heroContext?.threats?.hero.name} />
+    <div className="play-layout fit beginner">
+      <div className="play-main">
+        <div className="table-area">
+          <PokerTable game={game} longPositions heroHandName={heroContext?.threats?.hero.name} />
+        </div>
+        {/* The coach's latest line sits right above the buttons, so it's visible without scrolling. */}
+        {messages.length > 0 && (
+          <div className="coach-line" aria-live="polite">
+            <b>Coach:</b> {messages[messages.length - 1].title ?? messages[messages.length - 1].paragraphs[0]}
+          </div>
+        )}
+        <div className="action-area">
         {game.finished ? (
           <div className="action-bar">
             <button className="btn primary" onClick={g.dealNext} autoFocus>
@@ -151,6 +160,7 @@ export function BeginnerView({ settings, active }: Props) {
             <div className="waiting">{hero.folded ? 'You folded. Finishing the hand…' : `Waiting for ${game.players[game.toAct]?.name ?? 'the dealer'}…`}</div>
           </div>
         )}
+        </div>
       </div>
 
       <div className="side">

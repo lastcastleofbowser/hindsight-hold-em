@@ -4,13 +4,15 @@ Texas Hold'em hand analytics and probability app — an offline-first No-Limit *
 
 > The app covers **Texas Hold'em only**: two private hole cards per player, five shared community cards (flop, turn, river), four betting rounds, and the best five-card hand from those seven wins.
 
-> **Current version:** Iteration 4 (v0.4.0). See the [iteration log](#iteration-log) for what changed in each iteration.
+> **Current version:** Iteration 5 (v0.5.0). See the [iteration log](#iteration-log) for what changed in each iteration.
 
 ---
 
 ## Features
 
-The app has seven tabs: **Play & Train**, **Beginner**, **Hand Review**, **Which Hand Wins?**, **Ranges**, **Friends** and **Learn**. Everything except Friends runs in the browser and works offline; Friends is the one online feature.
+The app has eight tabs: **Play & Train**, **Beginner**, **Hand Review**, **Which Hand Wins?**, **Ranges**, **Friends**, **Profile** and **Learn**. Everything except Friends and Profile runs in the browser and works offline. Those two need the Hindsight Hold'em server and an account.
+
+**No scrolling to act:** Play & Train, Beginner and Friends fit the table and the action buttons (Fold / Check / Call / Bet) on screen at any window size, from phones to large monitors. The table scales to the space available, and side panels (odds, coach, summary, scoreboard) scroll on their own. On phones the panels follow below the table, and the tabs become one swipeable row.
 
 ### 1. Play & Train (gamified table)
 - A clean poker-table UI (felt, rail, dealer button, chips) with cards dealt at random and animated onto the table.
@@ -96,15 +98,27 @@ The app has seven tabs: **Play & Train**, **Beginner**, **Hand Review**, **Which
 - **Range drill:** you get a seat and a hand, decide raise/call/fold, then see the chart with your hand highlighted. Score and streak are saved.
 - The charts are **approximations of standard solver-style 6-max, 100-big-blind opening ranges**, simplified to always/never decisions. They are not output from a solver run and not taken from any commercial tool such as GTO Wizard. They are a strong, honest baseline for learning.
 
-### 6. Friends (online — play the same hand with friends)
-- One player creates a table and gets a 6-character code (e.g. `DAYHFK`); friends enter their name and the code to join. That's 2–6 players, all in the same hand with the same flop, turn and river.
-- The **scoreboard** counts hands won, e.g. `Liam 0 : Priya 2` (a split pot gives each winner half a point). After each hand everyone's cards are shown with an explanation of why the winner won.
-- Every player at a table needs a different name. To test on your own, open two tabs and join as e.g. "Liam" and "Liam 2". The lobby remembers your name, says what's missing when Join is disabled, and accepts pasted codes in any case, with spaces or dashes.
-- Each player has 45 seconds to act; after that they automatically check or fold. Players who drop out are folded when their turn comes and can rejoin their seat by reloading (the browser keeps a seat token for the tab).
-- **Security:** the server deals with a cryptographically random shuffle and validates every action with the same engine. The deck never leaves the server, and other players' cards are only sent once the hand is over. Names and codes are sanitised, and messages are size- and rate-limited.
-- The Friends tab needs the game server (`npm run server`; see Getting started) and an internet connection. Every other tab still works offline.
+### 6. Friends (online — play with friends, chips carry over)
+- **Accounts:** log in or create a free account first (Profile tab, or the Friends tab prompts you). Your username is your name at the table.
+- **Tables:** one player creates a table and becomes the **host**. They get a 6-character code (e.g. `DAYHFK`) and friends join with it. 2–6 players are in the same hand with the same flop, turn and river. **Only the host can deal the first hand**; after that anyone at the table can deal the next one.
+- **Chips carry over.** Everyone buys in for 1,000 chips (100 big blinds), and stacks carry over from hand to hand instead of resetting. Side pots are handled properly when someone is all-in for less.
+- **Scoreboard:** chips, **net** (chips minus everything bought in), hands won (a split counts as a share) and buy-ins. Going all-in recklessly shows up as a loss, not just a missed win.
+- **Out of chips?** You can **buy back in** for another 1,000, which is logged and counts against your net, or **leave the table**. Leaving keeps your chips on record; if you come back to the same table you return with them.
+- **Table log:** joins, buy-ins, busts and departures.
+- **Saved automatically:** after every hand your results are saved to your account, so you can see them in Profile.
+- **Timing and reconnects:** each player has 45 seconds to act; after that they automatically check or fold. Players who drop out are folded when their turn comes, and rejoin their seat automatically when they reconnect or reload.
+- **Security:**
+  - the server deals with a cryptographically random shuffle and validates every action with the same engine;
+  - the deck never leaves the server, and other players' cards are only sent once the hand is over;
+  - codes are sanitised, and messages are size- and rate-limited.
+- **Testing on your own:** each player needs their own account, and tabs in the same browser share one login. Use a private window or a second browser for the second player, or another device on your network.
 
-### 7. Learn (beginner support)
+### 7. Profile (online — your saved results)
+- Lifetime totals: net chips, games, hands won out of hands played, buy-ins, best and worst game.
+- A **progress chart** of your running net total after each game, with hover for each game's result.
+- **Recent games:** date, table code, everyone who played and their result, your hands won, buy-ins and result. A game still being played is marked *live*.
+
+### 8. Learn (beginner support)
 - **Texas Hold'em in two minutes:** the rules, betting rounds and how the showdown works.
 - **Hand rankings chart** from Royal Flush to High Card, with example cards and plain-English descriptions.
 - **Equity & pot odds lesson** with a worked example, an **outs calculator** (exact chance vs rule of 4/2) and a **pot odds calculator**.
@@ -131,7 +145,7 @@ The app has seven tabs: **Play & Train**, **Beginner**, **Hand Review**, **Which
 ### Offline-first
 - All poker maths (hand evaluation, equity simulation, outs, nuts, coaching logic, quiz grading) runs in the browser. **No server is required.**
 - A service worker precaches the whole app after the first visit, so it works with no connection. It can be installed as an app (PWA).
-- The only network feature is the Friends tab, which connects to the game server while you use it. The training tabs make no network requests after the app loads, and there is no API key.
+- The only network features are Friends and Profile, which talk to the Hindsight Hold'em server. The training tabs make no network requests after the app loads, and the service worker never caches account or history data.
 - The header no longer shows an online/offline indicator. Connection status is shown inside the Friends tab, the only place it matters.
 
 ---
@@ -153,7 +167,7 @@ The coach's sentences are templates written in the code and filled in with these
 - To share it, deploy `dist/` to a web host (see below) and send the link; nothing needs installing. Alternatively, another developer can clone the repo and run `npm install && npm run dev` (Node.js 18+).
 - After the first visit the service worker caches the app, so it keeps working offline on that device, and it can be installed like an app.
 - **Per-device data:** settings, saved review drafts and quiz scores live in that browser's local storage. They don't sync between computers.
-- **Friends** needs the game server to be reachable at the same address as the app (see below).
+- **Friends** and **Profile** need the server to be reachable at the same address as the app (see below). Accounts work from any computer; your saved games follow your login.
 
 ---
 
@@ -167,17 +181,21 @@ npm run dev        # development server at http://localhost:5173
 npm test           # unit tests (Vitest)
 npm run build      # type-check + production build into dist/
 npm run preview    # serve the production build (service worker active) at http://localhost:4173
-npm run server     # friends game server + the built app at http://localhost:8787 (run npm run build first)
+npm run server     # server: the built app + accounts + friends at http://localhost:8787 (run npm run build first)
 ```
 
-`npm run dev` and `npm run preview` forward the Friends tab's connection (`/ws`) to the game server on port 8787, so run `npm run server` in a second terminal to use Friends during development.
+The server stores accounts and game history in an SQLite database at `data/hindsight.sqlite`, which is git-ignored. Change the folder with `DATA_DIR=/path npm run server`.
+
+`npm run dev` and `npm run preview` forward the Friends connection (`/ws`) and the accounts API (`/api`) to the server on port 8787, so run `npm run server` in a second terminal to use Friends during development.
 
 The offline service worker is only registered in production builds (`npm run build` + `npm run preview`, or any static host serving `dist/`).
 
 ### Deploying to a website domain
 - **Training only:** `dist/` is a fully static site with relative asset paths. Upload it to any static host (Netlify, Vercel, GitHub Pages, S3/CloudFront, nginx). Serve over HTTPS so the service worker can register. The Friends tab will show "Can't reach the game server".
 - **With Friends:** deploy the repo to a Node.js host that supports WebSockets (Render, Railway, Fly.io, a VPS…). Run `npm ci && npm run build`, then start with `npm run server`; the host sets `PORT`. The server serves the app and the WebSocket (`/ws`) from the same address, so the app finds it automatically. Put it behind HTTPS so the browser uses a secure WebSocket (`wss://`).
-- Tables live in the server's memory: restarting the server clears them, and idle tables are removed after 30 minutes.
+- **Keep the database:** give the server a persistent disk and point `DATA_DIR` at it. Many hosts wipe the app folder on every deploy, which would lose accounts.
+- Behind a reverse proxy, set `TRUST_PROXY=1` so login rate-limiting sees real client addresses.
+- Live tables live in the server's memory: restarting the server ends tables in progress. Results up to the last finished hand are already saved. Idle tables are removed after 30 minutes.
 
 ---
 
@@ -191,7 +209,9 @@ The offline service worker is only registered in production builds (`npm run bui
 | **No UI framework / plain CSS** | Full control over the poker-table look; zero runtime styling dependencies. |
 | **Hand-written service worker** | Generated at build time from the bundle's file list (see `vite.config.ts`); small and dependency-free. |
 | **Vitest** | Same config and module system as Vite. |
-| **Node.js + `ws`** (Friends only) | A small WebSocket server that reuses the TypeScript game engine unchanged (run with `tsx`), so friends' hands follow exactly the same rules as the trainer. |
+| **Node.js + `ws`** (Friends and Profile) | A small WebSocket server that reuses the TypeScript game engine unchanged (run with `tsx`), so friends' hands follow exactly the same rules as the trainer. |
+| **SQLite via `sql.js`** | A real SQL database compiled to WebAssembly, so it needs no native build and runs on any Node version. It is saved atomically to one file. For a large user base, the plain SQLite schema moves easily to a server database. |
+| **scrypt + random session tokens** | Built into Node's `crypto`, so no extra security dependencies. Passwords are hashed with a per-user salt, and only SHA-256 hashes of session tokens are stored. |
 
 ---
 
@@ -218,15 +238,19 @@ src/
   content/tours.ts      Tutorial-mode tour steps (each targets a data-tour="…" element)
   friends/protocol.ts   Messages shared by the Friends tab and the game server
   hooks/                useGame (table state machine + bot timing), useSettings (draft/save/verify),
-                        useFriends (server connection, reconnect, seat token), useOnline
+                        useAuth (accounts + API client), useFriends (server connection, reconnect), useOnline
   components/           Table, cards, action bar, odds panel, chart, coach panel, hand summary,
                         review builder, chat, quiz, learn, beginner table, glossary terms (Term.tsx),
                         tutorial tours (Tour.tsx), ranges, friends, settings
   styles/app.css        Card-room theme
 server/
-  index.ts              Friends server: static app + WebSocket rooms, timers, rate limits
-  room.ts               One friends' table: seats, dealing, action validation, per-player views, score
-  tests/                Room tests
+  index.ts              Server: static app, /api routes, WebSocket tables, timers, rate limits, persistence hooks
+  api.ts                JSON API: register, log in/out, me, profile
+  auth.ts               Accounts: scrypt password hashing, session tokens, login rate-limiting
+  db.ts                 SQLite (sql.js) store: schema, queries, atomic save to disk
+  history.ts            Saved games: players, buy-ins, events; profile totals and progression
+  room.ts               One friends' table: seats, chips, buy-ins, host rules, validation, per-player views
+  tests/                Room, accounts and history tests
 vite.config.ts          Build config, offline service-worker generator, /ws proxy for development
 ```
 
@@ -254,7 +278,7 @@ vite.config.ts          Build config, offline service-worker generator, /ws prox
 - Bet sizing: flags oversized bets and all-ins with non-premium hands, and gives the break-even fold frequency for bluffs (bet ÷ (pot + bet)).
 
 ### Tests
-Tests live in `src/engine/tests/` (and `server/tests/` for the friends server) and run with `npm test`. They are TypeScript (`*.test.ts`) to match the rest of the codebase. There are 74 tests covering:
+Tests live in `src/engine/tests/` (and `server/tests/` for the friends server) and run with `npm test`. They are TypeScript (`*.test.ts`) to match the rest of the codebase. There are 84 tests covering:
 - evaluator: all 10 categories, the Royal Flush, kickers, the wheel;
 - equity, outs and the betting-range model;
 - the betting engine: chip conservation over 1,500 simulated hands;
@@ -268,7 +292,10 @@ Tests live in `src/engine/tests/` (and `server/tests/` for the friends server) a
 - settings clean-up, including removal of old API keys;
 - range notation and chart sizes, position-aware pre-flop advice;
 - opponent reads (a polarised big bet), read checks (exposing a bluff) and the river-bluff recommendation;
-- the friends room: hidden cards, turn order, scoring, timeouts, disconnects, rejoining, table limits and input cleaning.
+- the friends room: hidden cards, turn order, host-only first deal, chips carrying over, busting, rebuys and leaving, timeouts, disconnects, rejoining, table limits and code cleaning;
+- side pots (short all-ins, uncalled bets) and chip conservation over 1,500 hands with uneven stacks;
+- accounts: salted password hashing, sessions (only token hashes stored), validation, duplicates, case-insensitive usernames, login rate-limiting;
+- saved history: games, buy-ins, profile totals and progression (and that results are zero-sum).
 
 ---
 
@@ -280,12 +307,35 @@ Tests live in `src/engine/tests/` (and `server/tests/` for the friends server) a
 - The quiz grades written reasoning with keyword checks (hand names, kickers), not full language understanding.
 - The chat coach only understands the question types it was written for (outs, pot odds, who won, what to do in a round, the nuts, equity). Free-form questions get a list of what it can answer.
 - The range charts cover the first decision before the flop (raise first in, and big blind defence vs the button); there are no charts for 3-bets or calling raises from other seats yet.
-- Friends tables live in server memory (no accounts or database), so a server restart ends all tables. There is no chat, and there are no bots at friends' tables.
+- Live friends tables live in server memory, so a server restart ends tables in progress (finished hands are already saved). There is no chat, and there are no bots at friends' tables.
+- Accounts have no email, so there is no password reset or account deletion screen yet. The session token is kept in the browser's local storage.
+- The `sql.js` database keeps everything in memory and writes the whole file after changes. That's fine for friends and small communities; a large public deployment should move to a server database.
+- An all-in for less than a full raise reopens the betting (a simplification of the official rule).
 - At phone width, the side seats sit close to the community cards.
 
 ---
 
 ## Iteration log
+
+### Iteration 5 — fit-to-screen tables, persistent chips, accounts and saved history (v0.5.0)
+- **No scrolling to act:**
+  - Play & Train, Beginner and Friends fit the table and action buttons in the window at every size; tested at 1440×900, 1366×768, 1024×700 and a 390×844 phone.
+  - The page is now a fixed frame (header plus a content area), the table scales to the available space, and side panels scroll on their own.
+  - The end-of-hand summary moved to the side column; the result, *Deal next hand* and *Discuss with coach* sit under the table.
+  - The coach's latest suggestion appears above the Beginner buttons, and Skip/Continue for the "why?" prompt appear under the table.
+  - On phones the tabs are one swipeable row.
+- **Friends — chips carry over:**
+  - Stacks persist from hand to hand, and the engine now supports per-seat stacks and real side pots.
+  - The scoreboard shows chips, net, hands won and buy-ins.
+- **Busting:** at 0 chips players choose to **buy back in** (logged, counts against net) or **leave the table**. Everything is shown in a table log and saved to history.
+- **Host deals first:** only the host can deal the first hand; after that anyone can deal.
+- **Backend and accounts:**
+  - The server has an SQLite database (`sql.js`), accounts with scrypt-hashed passwords, random session tokens (stored hashed), and login rate-limiting.
+  - API: `/api/register`, `/api/login`, `/api/logout`, `/api/me`, `/api/profile`.
+  - Friends requires an account and saves every game, player result and buy-in.
+- **Profile tab:** lifetime totals, a progress chart of net chips over games, and recent games with everyone's results. The header shows *Log in* or your username.
+- The offline service worker never caches `/api` responses; the dev and preview servers forward `/api` to the backend.
+- Glossary: buy-in, side pot. Tests grew from 74 to 84.
 
 ### Iteration 4 — opponent reads, bluffing, ranges, friends (v0.4.0)
 - **Tutorial fix:** steps 11 and 12 of the Play & Train tour ("Right now" and "Outs") pointed at panels that only exist after the flop, so they appeared without a highlight. Tours now skip steps whose part isn't on screen, and a new post-flop tour covers "Right now", outs, opponent reads and the graph the first time you act after the flop.

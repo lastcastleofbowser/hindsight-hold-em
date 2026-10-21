@@ -436,7 +436,9 @@ textarea { resize: vertical; min-height: 64px; }
 .beginner-actions .btn { display: flex; flex-direction: column; align-items: center; gap: 2px; position: relative; }
 .beginner-actions .btn small { font-weight: 500; font-size: 11.5px; opacity: 0.8; }
 .beginner-actions .btn.suggested { box-shadow: 0 0 0 3px var(--great); }
-.beginner-actions .btn.suggested::after { content: '★ Coach\'s pick'; position: absolute; top: -10px; right: 8px; background: var(--great); color: #062b16; font-size: 10.5px; font-weight: 800; padding: 1px 8px; border-radius: 999px; }
+.beginner-actions .btn.suggested::after { content: '★ Coach\'s pick'; position: absolute; top: -9px; left: 50%; transform: translateX(-50%); white-space: nowrap; background: var(--great); color: #062b16; font-size: 10px; line-height: 16px; font-weight: 800; padding: 0 7px; border-radius: 999px; pointer-events: none; }
+.beginner-actions .action-row { padding-top: 6px; }
+@media (max-width: 640px) { .beginner-actions .btn.suggested::after { content: '★ Pick'; } .beginner-actions .btn small { font-size: 10.5px; } }
 .strength-meter { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
 .strength-meter span { height: 12px; border-radius: 4px; background: rgba(255, 255, 255, 0.08); }
 .strength-meter span.on.l0, .strength-meter span.on.l1 { background: var(--mistake); }
@@ -488,3 +490,88 @@ textarea { resize: vertical; min-height: 64px; }
 .member-score { margin-left: auto; font-variant-numeric: tabular-nums; }
 code { background: rgba(255, 255, 255, 0.08); padding: 1px 5px; border-radius: 4px; }
 .hint { margin: 8px 0 0; color: var(--questionable); }
+
+/* ---------- Fit-to-screen layout (iteration 5) ----------
+   The page is a fixed-height frame: header on top, <main> fills the rest.
+   Playing tabs (.tab-pane.fit) size the table to the space left so the
+   action buttons are always visible; side panels scroll on their own. */
+html, body, #root { height: 100%; }
+body { overflow: hidden; }
+.app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+.app-header { position: relative; flex: none; }
+main { flex: 1 1 auto; min-height: 0; overflow-y: auto; width: 100%; max-width: none; padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); }
+main > * { max-width: 1440px; margin-left: auto; margin-right: auto; }
+.tab-pane.fit { height: 100%; }
+.play-layout.fit { height: 100%; grid-template-rows: minmax(0, 1fr); gap: 12px; }
+.play-main { display: flex; flex-direction: column; gap: 8px; min-height: 0; min-width: 0; }
+.play-layout.fit > .play-main { height: 100%; }
+.play-layout.fit > .side { min-height: 0; overflow-y: auto; padding-right: 2px; }
+.play-main .session-bar { flex: none; margin: 0; flex-wrap: nowrap; overflow-x: auto; }
+.play-main .stat { white-space: nowrap; padding: 4px 10px; }
+.table-area { flex: 1 1 auto; min-height: 180px; display: flex; align-items: center; justify-content: center; container-type: size; }
+.table-area > .welcome { max-width: 640px; }
+.table-area .table-wrap { width: min(100cqw, 160cqh); min-height: 0; aspect-ratio: 16 / 10; container-type: inline-size; }
+.table-wrap { --card-w: clamp(28px, 6.2cqw, 62px); }
+.seat-cards .card { --card-w: clamp(22px, 4.6cqw, 50px); }
+.seat.hero .seat-cards .card { --card-w: clamp(28px, 6.4cqw, 66px); }
+.seat { width: clamp(96px, 20cqw, 150px); }
+.action-area { flex: none; }
+.action-area .action-bar { margin-top: 0; }
+.action-area > .waiting, .action-area > .deal-btn { width: 100%; }
+.result-bar, .bust-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; background: var(--panel); border: 1px solid var(--line-strong); border-radius: 12px; padding: 10px 14px; }
+.bust-bar { border-color: var(--questionable); }
+.result-bar .result-big { font-size: 20px; }
+.coach-line { flex: none; background: var(--panel); border: 1px solid rgba(231, 185, 76, 0.4); border-radius: 10px; padding: 8px 12px; font-size: 14px; }
+.coach-line b { color: var(--gold); }
+.friends-status { flex: none; margin-bottom: 0; }
+.play-main .friends-status .error-banner { margin: 0; padding: 6px 10px; }
+
+@media (max-width: 1100px) {
+  /* Single column: the table + actions fill the first screen; panels follow below. */
+  .play-layout.fit { height: auto; grid-template-rows: auto; }
+  .tab-pane.fit { height: auto; }
+  .play-layout.fit > .play-main { height: calc(100dvh - var(--header-h, 120px) - 24px); }
+  .play-layout.fit > .side { overflow: visible; }
+}
+@media (max-width: 640px) {
+  .table-area .table-wrap { width: min(100cqw, 75cqh); aspect-ratio: 3 / 4; }
+  .table-wrap { --card-w: clamp(24px, 9cqw, 48px); }
+  .seat-cards .card { --card-w: clamp(20px, 7.5cqw, 40px); }
+  .seat.hero .seat-cards .card { --card-w: clamp(26px, 10cqw, 52px); }
+  .seat { width: clamp(84px, 30cqw, 130px); }
+  /* One swipeable row of tabs keeps the header short. */
+  .tabs { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; border-radius: 999px; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { white-space: nowrap; padding: 6px 12px; }
+  .brand small { display: none; }
+  .app-header { gap: 8px; padding-top: calc(8px + env(safe-area-inset-top, 0px)); padding-bottom: 8px; }
+  .header-right { margin-left: auto; }
+  .play-main .btn { padding: 10px 12px; min-width: 0; }
+  .play-main .sizing { padding: 6px 8px; gap: 6px; }
+}
+/* The tour scrolls inside <main> now, so give that the extra room on phones. */
+@media (max-width: 560px) { body.tour-open main { padding-bottom: 70vh; } }
+
+/* ---------- Accounts, profile, scoreboard (iteration 5) ---------- */
+.auth-wrap { max-width: 440px; margin: 24px auto; }
+.auth-form { display: flex; flex-direction: column; gap: 12px; }
+.profile { display: flex; flex-direction: column; gap: 16px; }
+.profile-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.profile-head h1 { margin: 0; }
+.stat-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+.tile-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--ink-3); font-weight: 700; }
+.tile-value { font-size: 26px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.tile-sub { font-size: 12px; color: var(--ink-3); }
+.pos { color: var(--great); }
+.neg { color: var(--mistake); }
+.table-scroll { overflow-x: auto; }
+table.history { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+table.history th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--ink-3); padding: 6px 8px; border-bottom: 1px solid var(--line-strong); }
+table.history td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.history .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+table.history tr.left td { opacity: 0.55; }
+.scoreboard .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); }
+.scoreboard .dot.on { background: var(--great); }
+.player-result { display: inline-block; margin-right: 10px; white-space: nowrap; }
+.event-log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; color: var(--ink-2); }

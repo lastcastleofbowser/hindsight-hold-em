@@ -4,49 +4,42 @@ import type { ClientMessage, RoomView, ServerMessage } from '../friends/protocol
 
 export type Connection = 'idle' | 'connecting' | 'connected' | 'unreachable';
 
-const SESSION_KEY = 'hindsight-holdem.friends-session.v1';
+/** The table this tab is sitting at, so a reload or dropped connection rejoins it. */
+const TABLE_KEY = 'hindsight-holdem.friends-table.v1';
 
-interface SavedSession {
-  code: string;
-  name: string;
-  token: string;
-}
-
-function loadSession(): SavedSession | null {
+function savedTable(): string | null {
   try {
-    return JSON.parse(sessionStorage.getItem(SESSION_KEY) ?? 'null');
+    return sessionStorage.getItem(TABLE_KEY);
   } catch {
     return null;
   }
 }
 
-function saveSession(s: SavedSession | null) {
+function saveTable(code: string | null) {
   try {
-    if (s) sessionStorage.setItem(SESSION_KEY, JSON.stringify(s));
-    else sessionStorage.removeItem(SESSION_KEY);
+    if (code) sessionStorage.setItem(TABLE_KEY, code);
+    else sessionStorage.removeItem(TABLE_KEY);
   } catch {
-    // Non-fatal: a page reload just won't rejoin automatically.
+    // Non-fatal: a reload just won't rejoin automatically.
   }
 }
 
 const serverUrl = () => `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
 
 /**
- * Connection to the friends server. Connects only while the Friends tab is
- * in use, reconnects with back-off, and rejoins the same seat after a drop
- * or a page reload (using the seat token the server issued).
+ * Connection to the friends server for a logged-in user. Connects while the
+ * Friends tab is open (or while seated at a table), authenticates with the
+ * session token, reconnects with back-off and rejoins the same table.
  */
-export function useFriends(enabled: boolean) {
+export function useFriends(enabled: boolean, token: string | null, onAuthExpired: () => void) {
   const [connection, setConnection] = useState<Connection>('idle');
   const [room, setRoom] = useState<RoomView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const ws = useRef<WebSocket | null>(null);
-  const session = useRef<SavedSession | null>(loadSession());
-  const pendingName = useRef('');
+  const table = useRef<string | null>(savedTable());
+  const [seated, setSeated] = useState(!!table.current);
   const retry = useRef(0);
-  // Stay connected while seated at a table, even when the tab isn't visible.
-  const [seated, setSeated] = useState(!!session.current);
-  const shouldConnect = enabled || seated;
+  const shouldConnect = (enabled || seated) && !!token;
 
   const send = useCallback((msg: ClientMessage) => {
     if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(JSON.stringify(msg));
@@ -54,7 +47,7 @@ export function useFriends(enabled: boolean) {
   }, []);
 
   useEffect(() => {
-    if (!shouldConnect) return;
+    if (!shouldConnect || !token) return;
     let stopped = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
 
@@ -64,27 +57,33 @@ export function useFriends(enabled: boolean) {
       ws.current = socket;
       socket.onopen = () => {
         retry.current = 0;
-        setConnection('connected');
-        setError(null);
-        const s = session.current;
-        if (s) socket.send(JSON.stringify({ t: 'join', code: s.code, name: s.name, token: s.token } satisfies ClientMessage));
+        socket.send(JSON.stringify({ t: 'auth', token } satisfies ClientMessage));
       };
       socket.onmessage = (ev) => {
         const msg = JSON.parse(String(ev.data)) as ServerMessage;
-        if (msg.t === 'welcome') {
-          const name = session.current?.name ?? pendingName.current;
-          session.current = { code: msg.code, token: msg.token, name };
-          saveSession(session.current);
+        if (msg.t === 'authed') {
+          setConnection('connected');
+          setError(null);
+          if (table.current) socket.send(JSON.stringify({ t: 'join', code: table.current } satisfies ClientMessage));
+        } else if (msg.t === 'welcome') {
+          table.current = msg.code;
+          saveTable(msg.code);
           setSeated(true);
         } else if (msg.t === 'room') {
           setRoom(msg.room);
         } else if (msg.t === 'error') {
-          setError(msg.message);
-          // A saved seat that no longer exists (server restarted, table expired).
-          if (/No table with that code/.test(msg.message)) {
-            session.current = null;
-            saveSession(null);
+          if (msg.reason === 'auth') {
+            onAuthExpired();
+            return;
           }
+          if (msg.reason === 'no-table' && table.current) {
+            // The table we were at is gone (server restarted, or it expired).
+            table.current = null;
+            saveTable(null);
+            setSeated(false);
+            setRoom(null);
+          }
+          setError(msg.message);
         }
       };
       socket.onclose = () => {
@@ -102,33 +101,20 @@ export function useFriends(enabled: boolean) {
       ws.current = null;
       setConnection('idle');
     };
-  }, [shouldConnect]);
+  }, [shouldConnect, token, onAuthExpired]);
 
-  const create = useCallback(
-    (name: string) => {
-      pendingName.current = name;
-      session.current = null;
-      send({ t: 'create', name });
-    },
-    [send],
-  );
-  const join = useCallback(
-    (code: string, name: string) => {
-      pendingName.current = name;
-      session.current = null;
-      send({ t: 'join', code, name });
-    },
-    [send],
-  );
+  const create = useCallback(() => send({ t: 'create' }), [send]);
+  const join = useCallback((code: string) => send({ t: 'join', code }), [send]);
   const leave = useCallback(() => {
     send({ t: 'leave' });
-    session.current = null;
-    saveSession(null);
+    table.current = null;
+    saveTable(null);
     setRoom(null);
     setSeated(false);
   }, [send]);
   const deal = useCallback(() => send({ t: 'deal' }), [send]);
+  const rebuy = useCallback(() => send({ t: 'rebuy' }), [send]);
   const act = useCallback((hand: number, action: PlayerAction) => send({ t: 'act', hand, action }), [send]);
 
-  return { connection, room, error, clearError: () => setError(null), create, join, leave, deal, act };
+  return { connection, room, error, clearError: () => setError(null), create, join, leave, deal, rebuy, act };
 }

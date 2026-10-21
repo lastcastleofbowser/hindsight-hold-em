@@ -34,6 +34,8 @@ export const GLOSSARY: GlossaryEntry[] = [
   { term: 'Middle position', group: 'The game', match: ['middle position'], definition: 'Seats between under the gun and the cutoff (MP). Some players act after you, so be fairly selective.' },
   { term: 'Cutoff', group: 'The game', match: ['cutoff'], definition: 'The seat just to the right of the dealer button (CO). Only the button and blinds act after it, so you can play more hands here.' },
   { term: 'Heads-up', group: 'The game', match: ['heads-up', 'heads up'], definition: 'Only two players left in the hand.' },
+  { term: 'Buy-in', group: 'The game', match: ['buy-in', 'buy back in', 'rebuy'], definition: 'The chips you pay for when you sit down (1,000 at a friends\' table). If you run out you can buy back in — that counts against your net result.' },
+  { term: 'Side pot', group: 'The game', match: ['side pot', 'side pots'], definition: 'When a player is all-in for less than others bet, they can only win the "main pot" they matched. Extra bets between the other players go into a side pot that only they can win.' },
   { term: 'Split pot', group: 'The game', match: ['split pot', 'split the pot', 'pot is split', 'chop'], definition: 'When two or more players have exactly the same best five cards, they share the pot equally.' },
   { term: 'Suited / offsuit', group: 'The game', match: ['suited', 'offsuit'], definition: 'Hole cards of the same suit are "suited" (written AKs); different suits are "offsuit" (AKo).' },
 

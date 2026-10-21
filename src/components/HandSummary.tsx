@@ -1,7 +1,7 @@
 import { pct } from '../engine/analysis';
 import { VERDICT_LABELS } from '../engine/coach';
 import { orderBest5 } from '../engine/explain';
-import { type GameState, STREET_LABELS, netResult } from '../engine/game';
+import { type GameState, STREET_LABELS } from '../engine/game';
 import type { ReadCheck } from '../engine/reads';
 import type { HandReview } from '../engine/review';
 import { MiniCards } from './PlayingCard';
@@ -13,13 +13,9 @@ interface Props {
   /** Did each opponent's bets mean what they seemed to? */
   reveals: ReadCheck[];
   beginner: boolean;
-  onNext: () => void;
-  onDiscuss: () => void;
 }
 
-export function HandSummary({ game, review, reveals, beginner, onNext, onDiscuss }: Props) {
-  const hero = game.players.find((p) => p.isHero)!;
-  const net = netResult(game, hero.id);
+export function HandSummary({ game, review, reveals, beginner }: Props) {
   const sd = review.showdown;
   const winnerText = game.winners
     .map((w) => {
@@ -30,26 +26,10 @@ export function HandSummary({ game, review, reveals, beginner, onNext, onDiscuss
 
   return (
     <section className="panel summary" aria-label="Hand summary">
-      <div className="summary-head">
-        <div data-tour="summary-result">
-          <div className={`result-big ${net > 0 ? 'win' : net < 0 ? 'loss' : ''}`}>
-            {net > 0 ? `+${net}` : net} chips
-          </div>
-          <div className="muted small">
-            {winnerText}
-            {!game.showdown && ' — everyone else folded'}
-          </div>
-        </div>
-        <div className="row-btns" style={{ marginTop: 0 }}>
-          {review.decisions.length > 0 && (
-            <button className="btn ghost" onClick={onDiscuss} data-tour="discuss">
-              Discuss with coach
-            </button>
-          )}
-          <button className="btn primary" onClick={onNext} autoFocus data-tour="next-hand">
-            Deal next hand
-          </button>
-        </div>
+      <h2>Hand #{game.handNumber} summary</h2>
+      <div className="muted small" style={{ marginBottom: 8 }}>
+        {winnerText}
+        {!game.showdown && ' — everyone else folded'}
       </div>
 
       {sd && (

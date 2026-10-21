@@ -81,6 +81,8 @@ export interface NewHandOptions {
   handNumber: number;
   buttonIndex: number;
   startingStack: number;
+  /** Per-seat stacks (e.g. chips carried over at a friends' table); defaults to startingStack. */
+  stacks?: number[];
   smallBlind: number;
   bigBlind: number;
   rng?: () => number;
@@ -149,8 +151,8 @@ function commit(p: Player, amount: number): number {
 }
 
 /**
- * Every hand starts with equal stacks, which guarantees a single main pot
- * (nobody can be all-in for less than anyone else's maximum), so no side pots.
+ * Deals a new hand. Stacks default to equal (the trainer); friends' tables
+ * pass each player's carried-over chips, and side pots are handled at showdown.
  */
 export function newHand(opts: NewHandOptions): GameState {
   const deck = opts.deck ? [...opts.deck] : shuffle([...FULL_DECK], opts.rng);
@@ -159,7 +161,7 @@ export function newHand(opts: NewHandOptions): GameState {
     name: seat.name,
     isHero: seat.isHero,
     style: seat.style,
-    stack: opts.startingStack,
+    stack: opts.stacks?.[id] ?? opts.startingStack,
     hole: [],
     committed: 0,
     totalCommitted: 0,
@@ -344,27 +346,47 @@ function awardUncontested(s: GameState, winner: Player): GameState {
   return s;
 }
 
+/**
+ * Pays out the main pot and any side pots. Each pot layer is capped at what
+ * an all-in player could match; only players who put in at least that much
+ * can win it. With equal stacks this is simply one pot.
+ */
 function runShowdown(s: GameState): GameState {
   const contenders = activePlayers(s);
-  let best = -1;
-  for (const p of contenders) {
-    const result = evaluateHand([...p.hole, ...s.board]);
-    s.results[p.id] = result;
-    best = Math.max(best, result.score);
-  }
-  const winners = contenders.filter((p) => s.results[p.id].score === best);
-  const pot = potSize(s);
-  const share = Math.floor(pot / winners.length);
-  let oddChips = pot - share * winners.length;
+  for (const p of contenders) s.results[p.id] = evaluateHand([...p.hole, ...s.board]);
+
+  const n = s.players.length;
   // Odd chips go to the first winner left of the button.
-  const ordered = [...winners].sort(
-    (a, b) => ((a.id - s.buttonIndex + s.players.length - 1) % s.players.length) - ((b.id - s.buttonIndex + s.players.length - 1) % s.players.length),
-  );
-  s.winners = ordered.map((p) => {
-    const amount = share + (oddChips-- > 0 ? 1 : 0);
-    p.stack += amount;
-    return { playerId: p.id, amount, hand: s.results[p.id] };
-  });
+  const seatOrder = (p: Player) => (p.id - s.buttonIndex + n - 1) % n;
+  const won = new Map<number, number>();
+  const levels = [...new Set(contenders.map((p) => p.totalCommitted))].sort((a, b) => a - b);
+  let previous = 0;
+  let paid = 0;
+  for (const level of levels) {
+    let layer = 0;
+    for (const p of s.players) layer += Math.max(0, Math.min(p.totalCommitted, level) - previous);
+    const eligible = contenders.filter((p) => p.totalCommitted >= level);
+    const best = Math.max(...eligible.map((p) => s.results[p.id].score));
+    const layerWinners = eligible.filter((p) => s.results[p.id].score === best).sort((a, b) => seatOrder(a) - seatOrder(b));
+    const share = Math.floor(layer / layerWinners.length);
+    let odd = layer - share * layerWinners.length;
+    for (const p of layerWinners) won.set(p.id, (won.get(p.id) ?? 0) + share + (odd-- > 0 ? 1 : 0));
+    paid += layer;
+    previous = level;
+  }
+  // Chips from folded players above every contender's level (rare) go to the last layer's winners.
+  const leftover = potSize(s) - paid;
+  if (leftover > 0) {
+    const top = [...won.keys()].sort((a, b) => seatOrder(s.players[a]) - seatOrder(s.players[b]))[0];
+    won.set(top, (won.get(top) ?? 0) + leftover);
+  }
+
+  s.winners = [...won.entries()]
+    .sort((a, b) => b[1] - a[1] || seatOrder(s.players[a[0]]) - seatOrder(s.players[b[0]]))
+    .map(([id, amount]) => {
+      s.players[id].stack += amount;
+      return { playerId: id, amount, hand: s.results[id] };
+    });
   s.showdown = true;
   s.finished = true;
   s.toAct = -1;
