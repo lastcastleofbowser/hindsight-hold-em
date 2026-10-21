@@ -8,6 +8,7 @@ import {
   type ReasonTag,
   type Verdict,
   evaluateDecision,
+  keyLesson,
   readsEquity,
   inferReasons,
   respondToReason,
@@ -53,6 +54,13 @@ export interface CoachState {
   replies: string[];
 }
 
+/** What the coach carries over into the next hand. */
+export interface LastHand {
+  net: number;
+  /** The most useful takeaway, when a decision went wrong. */
+  lesson: string | null;
+}
+
 export interface SessionStats {
   hands: number;
   net: number;
@@ -70,6 +78,30 @@ function seatsFor(settings: Settings): SeatConfig[] {
 export interface GameOptions {
   /** Grade each action and hold the table until resume() — used by the Beginner tab. */
   pauseAfterAction?: boolean;
+  /** Carry every seat's chips from hand to hand and save them in the browser under this key. */
+  persistChips?: string;
+}
+
+/** Chips per seat name, so a stack follows its player if the table size changes. */
+type ChipBank = Record<string, number>;
+
+function loadChips(key: string | undefined): ChipBank {
+  if (!key) return {};
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(key) ?? '{}');
+    if (!parsed || typeof parsed !== 'object') return {};
+    return Object.fromEntries(Object.entries(parsed).filter(([, v]) => Number.isFinite(v) && (v as number) >= 0)) as ChipBank;
+  } catch {
+    return {};
+  }
+}
+
+function saveChips(key: string, bank: ChipBank) {
+  try {
+    localStorage.setItem(key, JSON.stringify(bank));
+  } catch {
+    // Storage blocked (private window): chips still carry over until the page closes.
+  }
 }
 
 export function useGame(settings: Settings, options: GameOptions = {}) {
@@ -80,6 +112,14 @@ export function useGame(settings: Settings, options: GameOptions = {}) {
   const [session, setSession] = useState<SessionStats>({ hands: 0, net: 0, verdicts: { great: 0, good: 0, questionable: 0, mistake: 0 } });
   const handCounter = useRef(0);
   const recorded = useRef(-1);
+  const persistKey = options.persistChips;
+  const chips = useRef<ChipBank | null>(null);
+  if (persistKey && chips.current === null) chips.current = loadChips(persistKey);
+  /** Hero's chips going into the next hand (persisted tables only). */
+  const [bankroll, setBankroll] = useState<number | null>(() => (chips.current ? (chips.current.You ?? STARTING_STACK) : null));
+  /** Set when hero ran out of chips and was given a fresh stack for this hand. */
+  const [reloaded, setReloaded] = useState(false);
+  const [lastHand, setLastHand] = useState<LastHand | null>(null);
 
   const hero = game?.players.find((p) => p.isHero) ?? null;
   const heroIn = !!hero && !hero.folded;
@@ -122,6 +162,7 @@ export function useGame(settings: Settings, options: GameOptions = {}) {
     if (!game || !hero || !analysis || !heroToAct) return null;
     const toCall = legalActions(game).callAmount;
     const reads = buildReads(game, hero.id);
+    const biggestOpponent = Math.max(0, ...activePlayers(game).filter((p) => !p.isHero).map((p) => p.stack + p.committed));
     return {
       street: game.street,
       hole: hero.hole,
@@ -131,6 +172,8 @@ export function useGame(settings: Settings, options: GameOptions = {}) {
       toCall,
       bigBlind: game.bigBlind,
       heroStack: hero.stack,
+      // Chips an opponent has already put in this street still count against hero's stack.
+      effectiveStack: Math.min(hero.stack, Math.max(0, biggestOpponent - hero.committed)),
       equity: analysis.equity,
       rangeEquity: readsEquity(hero.hole, game.board, reads, iterations),
       position: positionOf(hero.id, game.buttonIndex, game.players.length),
@@ -146,12 +189,17 @@ export function useGame(settings: Settings, options: GameOptions = {}) {
   const dealNext = useCallback(() => {
     const seats = seatsFor(settings);
     const handNumber = ++handCounter.current;
+    // Anyone who can't cover the big blind gets a fresh stack.
+    const bank = chips.current;
+    const stacks = bank ? seats.map((s) => (bank[s.name] !== undefined && bank[s.name] >= BIG_BLIND ? bank[s.name] : STARTING_STACK)) : undefined;
+    setReloaded(!!bank && bank.You !== undefined && bank.You < BIG_BLIND);
     setGame(
       newHand({
         seats,
         handNumber,
         buttonIndex: (handNumber - 1) % seats.length,
         startingStack: STARTING_STACK,
+        stacks,
         smallBlind: SMALL_BLIND,
         bigBlind: BIG_BLIND,
       }),
@@ -253,6 +301,13 @@ export function useGame(settings: Settings, options: GameOptions = {}) {
   useEffect(() => {
     if (!game?.finished || !hero || !review || recorded.current === game.handNumber) return;
     recorded.current = game.handNumber;
+    if (persistKey && chips.current) {
+      for (const p of game.players) chips.current[p.name] = p.stack;
+      saveChips(persistKey, chips.current);
+      setBankroll(hero.stack);
+    }
+    const leak = review.biggestLeak;
+    setLastHand({ net: netResult(game, hero.id), lesson: leak ? keyLesson(leak.decision.ctx.street, leak.decision.action, leak.feedback) : null });
     setSession((s) => {
       const verdicts = { ...s.verdicts };
       for (const r of review.decisions) verdicts[r.feedback.verdict]++;
@@ -262,7 +317,21 @@ export function useGame(settings: Settings, options: GameOptions = {}) {
 
   const reveals = useMemo(() => (game?.finished && hero ? readChecks(game, hero.id) : []), [game?.finished, game?.handNumber]);
 
+  /** Everyone back to the starting stack from the next hand. Only between hands, or the hand in play would save over it. */
+  const canResetChips = !!persistKey && (!game || game.finished);
+  const resetChips = useCallback(() => {
+    if (!persistKey || !canResetChips) return;
+    chips.current = {};
+    saveChips(persistKey, {});
+    setBankroll(STARTING_STACK);
+  }, [persistKey, canResetChips]);
+
   return {
+    bankroll,
+    reloaded,
+    lastHand,
+    canResetChips,
+    resetChips,
     game,
     hero,
     reveals,

@@ -1,20 +1,26 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { beginnerAdvice, beginnerFeedback, strengthLabel } from '../engine/beginnerCoach';
 import { cardsLabel } from '../engine/cards';
-import { type DecisionContext, type Move } from '../engine/coach';
+import { type DecisionContext, type Move, decisionRecap } from '../engine/coach';
 import { orderBest5 } from '../engine/explain';
-import { type GameState, type PlayerAction, POSITION_NAMES, legalActions, netResult, positionOf, potSize } from '../engine/game';
+import { type GameState, type PlayerAction, type Street, POSITION_NAMES, legalActions, netResult, positionOf, potSize } from '../engine/game';
 import { useGame } from '../hooks/useGame';
 import type { Settings } from '../hooks/useSettings';
+import { LastHandNote } from './CoachPanel';
 import { PokerTable } from './PokerTable';
+import { SteadyArea } from './SteadyArea';
 import { TermText } from './Term';
 import { useAutoTour } from './Tour';
 
 interface CoachMessage {
   id: string;
   kind: 'advice' | 'feedback' | 'summary' | 'info';
+  /** The betting round it belongs to; once play moves on it shrinks to its recap. */
+  street: Street | 'summary';
   title?: string;
   paragraphs: string[];
+  /** One-line version kept after the round is over. */
+  recap?: string;
 }
 
 interface Props {
@@ -46,19 +52,27 @@ export function BeginnerView({ settings, active }: Props) {
   const { game, hero, heroContext, review } = g;
   const [messages, setMessages] = useState<CoachMessage[]>([]);
   const added = useRef(new Set<string>());
+  /** Paragraphs already said, per betting round. */
+  const spoken = useRef(new Map<string, Set<string>>());
   const logRef = useRef<HTMLDivElement>(null);
   const position = game && hero ? positionOf(hero.id, game.buttonIndex, game.players.length) : null;
 
   const push = (msg: CoachMessage) => {
     if (added.current.has(msg.id)) return;
     added.current.add(msg.id);
-    setMessages((m) => [...m, msg]);
+    // Within a betting round, never say the same thing twice.
+    const said = spoken.current.get(msg.street) ?? new Set<string>();
+    spoken.current.set(msg.street, said);
+    const paragraphs = msg.paragraphs.filter((p) => !said.has(p));
+    for (const p of paragraphs) said.add(p);
+    setMessages((m) => [...m, { ...msg, paragraphs }]);
   };
 
-  // New hand: clear the conversation.
+  // New hand: clear the conversation (the last hand's lesson is carried by g.lastHand).
   useEffect(() => {
     if (!game) return;
     added.current = new Set();
+    spoken.current = new Map();
     setMessages([]);
   }, [game?.handNumber]);
 
@@ -69,7 +83,7 @@ export function BeginnerView({ settings, active }: Props) {
   );
   useEffect(() => {
     if (!advice || !game) return;
-    push({ id: `${game.handNumber}-advice-${g.decisions.length}`, kind: 'advice', title: advice.headline, paragraphs: advice.paragraphs });
+    push({ id: `${game.handNumber}-advice-${g.decisions.length}`, kind: 'advice', street: game.street, title: advice.headline, paragraphs: advice.paragraphs });
   }, [advice]);
 
   // Short feedback after each decision.
@@ -80,7 +94,9 @@ export function BeginnerView({ settings, active }: Props) {
     push({
       id: `${game.handNumber}-feedback-${g.coach.decisionIndex}`,
       kind: 'feedback',
+      street: d.ctx.street,
       paragraphs: [beginnerFeedback(d.ctx, d.action, g.coach.feedback.verdict, g.coach.feedback.recommendation.move)],
+      recap: decisionRecap(d.ctx.street, d.action, g.coach.feedback),
     });
   }, [g.coach]);
 
@@ -102,7 +118,7 @@ export function BeginnerView({ settings, active }: Props) {
     paragraphs.push(net > 0 ? `You won ${net} chips this hand. 🎉` : net < 0 ? `You lost ${-net} chips this hand.` : 'You broke even this hand.');
     for (const r of g.reveals) paragraphs.push(r.text);
     paragraphs.push("Everyone's cards are now face up — have a look at what they had.");
-    push({ id: `${game.handNumber}-summary`, kind: 'summary', title: 'Hand over', paragraphs });
+    push({ id: `${game.handNumber}-summary`, kind: 'summary', street: 'summary', title: 'Hand over', paragraphs });
   }, [game?.finished, review]);
 
   useEffect(() => {
@@ -127,6 +143,12 @@ export function BeginnerView({ settings, active }: Props) {
   }
 
   const strength = heroContext ? strengthLabel(heroContext) : null;
+  // The round being talked about is the one the newest message belongs to; earlier rounds shrink to recaps.
+  const visible = messages.filter((m) => m.title || m.paragraphs.length);
+  const focus = visible[visible.length - 1]?.street;
+  const current = visible.filter((m) => m.street === focus);
+  const recaps = visible.filter((m) => m.street !== focus && m.recap).map((m) => m.recap!);
+  const latest = visible[visible.length - 1];
 
   return (
     <div className="play-layout fit beginner">
@@ -134,10 +156,11 @@ export function BeginnerView({ settings, active }: Props) {
         <div className="table-area">
           <PokerTable game={game} longPositions heroHandName={heroContext?.threats?.hero.name} />
         </div>
+        <SteadyArea>
         {/* The coach's latest line sits right above the buttons, so it's visible without scrolling. */}
-        {messages.length > 0 && (
+        {latest && (
           <div className="coach-line" aria-live="polite">
-            <b>Coach:</b> {messages[messages.length - 1].title ?? messages[messages.length - 1].paragraphs[0]}
+            <b>Coach:</b> {latest.title ?? latest.paragraphs[0]}
           </div>
         )}
         <div className="action-area">
@@ -161,6 +184,7 @@ export function BeginnerView({ settings, active }: Props) {
           </div>
         )}
         </div>
+        </SteadyArea>
       </div>
 
       <div className="side">
@@ -180,9 +204,20 @@ export function BeginnerView({ settings, active }: Props) {
         <section className="panel coach-talk" data-tour="beginner-coach" aria-label="Coach" aria-live="polite">
           <h2>Coach</h2>
           <div className="coach-log" ref={logRef}>
-            {messages.length === 0 && <p className="muted small">Cards are being dealt…</p>}
-            {messages.map((m, i) => (
-              <div key={m.id} className={`talk ${m.kind}${i === messages.length - 1 ? ' latest' : ''}`}>
+            {g.lastHand && !game.finished && g.decisions.length === 0 && <LastHandNote lastHand={g.lastHand} />}
+            {recaps.length > 0 && (
+              <div className="recap">
+                <div className="recap-title">Earlier this hand</div>
+                <ul>
+                  {recaps.map((r, i) => (
+                    <li key={i}>{r}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {visible.length === 0 && <p className="muted small">Cards are being dealt…</p>}
+            {current.map((m, i) => (
+              <div key={m.id} className={`talk ${m.kind}${i === current.length - 1 ? ' latest' : ''}`}>
                 {m.title && <div className="talk-title">{m.title}</div>}
                 {m.paragraphs.map((p) => (
                   <p key={p}>

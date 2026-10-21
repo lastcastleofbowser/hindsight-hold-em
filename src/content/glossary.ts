@@ -67,7 +67,7 @@ export const GLOSSARY: GlossaryEntry[] = [
   // Odds & maths
   { term: 'Equity', group: 'Odds & maths', match: ['equity', 'win chance'], definition: 'Your share of the pot if the hand were played out many times — basically your chance of winning. 40% equity means you win about 4 times in 10.' },
   { term: 'Even share', group: 'Odds & maths', match: ['even share', 'fair share'], definition: 'The equity you would have if every hand were equally strong: 50% against one opponent, 33% against two, 25% against three.' },
-  { term: 'Pot odds', group: 'Odds & maths', match: ['pot odds'], definition: 'The price of a call compared with what you can win. To break even you need equity of at least: call ÷ (pot + call). Calling 10 into a pot of 30 needs 10 ÷ 40 = 25%.' },
+  { term: 'Pot odds', group: 'Odds & maths', match: ['pot odds'], definition: 'How often a call has to win to pay for itself: call ÷ (pot + call). Calling 10 into a pot of 30 needs 10 ÷ 40 = 25% — 1 time in 4. If your chance of winning is higher, call; if it is lower, fold.' },
   { term: 'Outs', group: 'Odds & maths', match: ['outs'], definition: 'Unseen cards that would improve your hand to (probably) the best hand. Nine hearts left when you hold four hearts = 9 outs to a flush.' },
   { term: 'Rule of 4 and 2', group: 'Odds & maths', match: ['rule of 4', 'rule of thumb'], definition: 'Quick odds: on the flop, outs × 4 ≈ your % to hit by the river; on the turn, outs × 2 ≈ your % to hit on the river. 9 outs on the flop ≈ 36% (exact: 35%).' },
   { term: 'Combos', group: 'Odds & maths', match: ['combos', 'combinations', 'possible holdings'], definition: 'The number of distinct two-card hands that make something. A specific pair like Aces has 6 combos; a specific non-pair like A-K has 16.' },

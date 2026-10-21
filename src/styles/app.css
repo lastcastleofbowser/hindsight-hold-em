@@ -66,6 +66,15 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 .tab { border: 0; background: transparent; padding: 7px 16px; border-radius: 999px; color: var(--ink-2); font-weight: 600; }
 .tab[aria-selected='true'] { background: var(--gold); color: var(--gold-ink); }
 .header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.burger { position: relative; }
+.burger-btn { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--bg-2); padding: 7px 14px; border-radius: 999px; color: var(--ink-2); font-weight: 600; white-space: nowrap; }
+.burger-btn.active { background: var(--gold); color: var(--gold-ink); border-color: transparent; }
+.burger-icon { font-size: 15px; line-height: 1; }
+.burger-menu { position: absolute; top: calc(100% + 6px); left: 0; z-index: 30; min-width: 200px; display: flex; flex-direction: column; padding: 6px; background: var(--panel); border: 1px solid var(--line-strong); border-radius: 12px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45); }
+.burger-menu button { border: 0; background: transparent; text-align: left; padding: 9px 12px; border-radius: 8px; color: var(--ink); font-weight: 600; }
+.burger-menu button:hover { background: var(--bg-2); }
+.burger-menu button[aria-current='true'] { color: var(--gold); }
+.burger-menu hr { border: 0; border-top: 1px solid var(--line); margin: 6px 4px; }
 .status-pill { font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--ink-2); display: inline-flex; align-items: center; gap: 6px; }
 .status-pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--great); }
 .status-pill.offline .dot { background: var(--questionable); }
@@ -89,6 +98,7 @@ main { padding: 16px; max-width: 1440px; margin: 0 auto; }
 .stat b { color: var(--ink); font-variant-numeric: tabular-nums; }
 .stat .pos { color: var(--great); }
 .stat .neg { color: var(--mistake); }
+.stat .link-btn { margin-left: 8px; }
 
 /* ---------- Poker table ---------- */
 .table-wrap { position: relative; width: 100%; aspect-ratio: 16 / 10; min-height: 360px; }
@@ -191,6 +201,27 @@ main { padding: 16px; max-width: 1440px; margin: 0 auto; }
 .meter { height: 10px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); overflow: hidden; position: relative; margin: 8px 0 4px; }
 .meter > span { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: linear-gradient(90deg, var(--good), var(--great)); transition: width 0.5s ease; }
 .meter .tick { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink); opacity: 0.6; }
+.meter .tick.need { background: var(--questionable); opacity: 1; }
+/* The meter explains itself on hover (HoverTip); a little padding makes it easier to hit. */
+.meter-tip { cursor: help; padding: 4px 0; margin: 4px 0 0; border-radius: 6px; }
+.meter-tip .meter { margin: 0; }
+.meter-tip:hover .meter, .meter-tip:focus-visible .meter { box-shadow: 0 0 0 2px rgba(231, 185, 76, 0.35); }
+.term-tip.wide { max-width: min(320px, calc(100vw - 16px)); }
+.tip-legend { list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.tip-legend li { display: flex; gap: 8px; align-items: flex-start; }
+.tip-legend b { color: var(--ink); font-size: 13px; text-transform: none; letter-spacing: 0; }
+.swatch { flex: none; display: inline-block; width: 14px; height: 10px; border-radius: 3px; margin-top: 4px; }
+.swatch.fill { background: linear-gradient(90deg, var(--good), var(--great)); }
+.swatch.even { width: 3px; background: var(--ink); margin-left: 5px; margin-right: 6px; }
+.swatch.need { width: 3px; background: var(--questionable); margin-left: 5px; margin-right: 6px; }
+/* Pot odds worked through with this hand's numbers. */
+.pot-odds .steps { margin: 0 0 8px; padding-left: 20px; font-size: 13px; display: flex; flex-direction: column; gap: 5px; }
+.pot-odds-verdict { margin: 0 0 8px; padding: 8px 10px; border-radius: 8px; font-size: 13.5px; }
+.pot-odds.ok .pot-odds-verdict { background: rgba(60, 207, 126, 0.1); border: 1px solid rgba(60, 207, 126, 0.35); }
+.pot-odds.bad .pot-odds-verdict { background: rgba(239, 93, 93, 0.1); border: 1px solid rgba(239, 93, 93, 0.35); }
+.real-table summary { cursor: pointer; font-size: 13px; font-weight: 700; color: var(--gold); margin-bottom: 6px; }
+.real-table[open] summary { margin-bottom: 8px; }
+.countdown { font-weight: 600; opacity: 0.8; font-variant-numeric: tabular-nums; }
 .kv { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; font-size: 13px; margin-top: 10px; }
 .kv dt { color: var(--ink-3); }
 .kv dd { margin: 0; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
@@ -453,6 +484,17 @@ textarea { resize: vertical; min-height: 64px; }
 .talk-title { font-weight: 800; font-size: 16px; margin-bottom: 6px; color: var(--gold); }
 .talk.feedback { border-left: 3px solid var(--good); }
 .talk.summary .talk-title { color: var(--great); }
+/* Earlier rounds and the last hand, boiled down to one line each. */
+.recap { background: var(--bg-2); border: 1px dashed var(--line-strong); border-radius: 12px; padding: 8px 12px; margin-bottom: 10px; font-size: 13px; color: var(--ink-2); }
+.recap-title { font-size: 11px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: var(--ink-3); margin-bottom: 4px; }
+.recap ul { margin: 0; padding-left: 18px; }
+.recap li { margin: 2px 0; }
+.recap li.questionable::marker { color: var(--questionable); }
+.recap li.mistake::marker { color: var(--mistake); }
+.recap p { margin: 0; }
+.recap .pos { color: var(--great); }
+.recap .neg { color: var(--mistake); }
+.coach-log .recap { margin-bottom: 0; }
 @media (max-width: 560px) { body.tour-open { padding-bottom: 70vh; } }
 
 /* ---------- Ranges (iteration 4) ---------- */
@@ -516,6 +558,11 @@ main > * { max-width: 1440px; margin-left: auto; margin-right: auto; }
 .seat.hero .seat-cards .card { --card-w: clamp(28px, 6.4cqw, 66px); }
 .seat { width: clamp(96px, 20cqw, 150px); }
 .action-area { flex: none; }
+/* Space under the table held at its tallest (SteadyArea), so the table never rescales. */
+.steady-area { flex: none; }
+.steady-inner { display: flex; flex-direction: column; gap: 8px; }
+/* The full coach text is in the side panel; two lines here keep the height predictable. */
+.steady-inner .coach-line { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
 .action-area .action-bar { margin-top: 0; }
 .action-area > .waiting, .action-area > .deal-btn { width: 100%; }
 .result-bar, .bust-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; background: var(--panel); border: 1px solid var(--line-strong); border-radius: 12px; padding: 10px 14px; }
@@ -549,6 +596,43 @@ main > * { max-width: 1440px; margin-left: auto; margin-right: auto; }
   .play-main .btn { padding: 10px 12px; min-width: 0; }
   .play-main .sizing { padding: 6px 8px; gap: 6px; }
 }
+/* Mid-size windows (small laptops, tablets on their side) keep the side column next to the table. */
+@media (min-width: 861px) and (max-width: 1100px) {
+  .tab-pane.fit { height: 100%; }
+  .play-layout.fit { grid-template-columns: minmax(0, 1fr) 320px; grid-template-rows: minmax(0, 1fr); height: 100%; }
+  .play-layout.fit > .play-main { height: 100%; }
+  .play-layout.fit > .side { overflow-y: auto; }
+}
+
+/* ---------- Side tabs (Play & Train) ----------
+   Headline strip + one tab at a time; only the open tab scrolls, never the page. */
+.play-layout.fit > .side.tabbed { overflow: hidden; padding-right: 0; }
+.side.tabbed > .side-tabs { flex: 1 1 auto; min-height: 0; }
+.side-tabs { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.glance { flex: none; display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.glance-body { flex: 1; min-width: 0; }
+.glance-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 4px 18px; width: 100%; background: none; border: 0; padding: 0; text-align: left; color: inherit; }
+.glance-num { display: inline-flex; flex-direction: column; line-height: 1.1; }
+.glance-num b { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--ink); }
+.glance-num small { font-size: 10.5px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.4px; }
+.glance-line { flex-basis: 100%; font-size: 13px; color: var(--ink-2); margin-top: 2px; }
+.glance .pos { color: var(--great); }
+.glance .neg { color: var(--mistake); }
+.glance-verdict { flex: none; border: 0; }
+.side-tablist { flex: none; display: flex; gap: 2px; padding: 0 8px; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+.side-tab { position: relative; border: 0; background: transparent; padding: 9px 12px; color: var(--ink-3); font-weight: 700; font-size: 13px; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+.side-tab:hover { color: var(--ink-2); }
+.side-tab[aria-selected='true'] { color: var(--ink); border-bottom-color: var(--gold); }
+.side-dot { position: absolute; top: 7px; right: 3px; width: 7px; height: 7px; border-radius: 50%; background: var(--gold); }
+.side-pane { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 14px; }
+.side-pane[hidden] { display: none; }
+/* Panels inside a tab drop their own card styling — the tab container is the card. */
+.side-pane > .panel { background: none; border: 0; box-shadow: none; padding: 0; border-radius: 0; }
+@media (max-width: 860px) {
+  /* Single column: the tabs sit under the table, with the open tab capped so it stays compact. */
+  .side-pane { max-height: 60vh; }
+}
+
 /* The tour scrolls inside <main> now, so give that the extra room on phones. */
 @media (max-width: 560px) { body.tour-open main { padding-bottom: 70vh; } }
 

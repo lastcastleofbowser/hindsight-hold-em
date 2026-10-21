@@ -1,16 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   type CoachFeedback,
   type DecisionContext,
   type ReasonTag,
   REASON_OPTIONS,
   VERDICT_LABELS,
+  decisionRecap,
+  evaluateDecision,
   plainEnglish,
+  pointGist,
   recommend,
 } from '../engine/coach';
 import { STREET_LABELS } from '../engine/game';
 import type { Decision } from '../engine/review';
-import type { CoachState } from '../hooks/useGame';
+import type { CoachState, LastHand } from '../hooks/useGame';
 import type { CoachMode } from '../hooks/useSettings';
 import { TermText } from './Term';
 
@@ -21,18 +24,29 @@ interface Props {
   heroContext: DecisionContext | null;
   holdTable: boolean;
   beginner: boolean;
+  /** Carried over from the previous hand; shown until this hand's first decision. */
+  lastHand?: LastHand | null;
   onAnswer: (tags: ReasonTag[], note: string) => void;
   onResume: () => void;
 }
 
 const ACTION_VERBS: Record<string, string> = { fold: 'fold', check: 'check', call: 'call', bet: 'bet', raise: 'raise' };
 
-export function CoachPanel({ mode, coach, decisions, heroContext, holdTable, beginner, onAnswer, onResume }: Props) {
+export function CoachPanel({ mode, coach, decisions, heroContext, holdTable, beginner, lastHand, onAnswer, onResume }: Props) {
   const [hint, setHint] = useState(false);
   useEffect(() => setHint(false), [heroContext]);
 
+  // Only the latest decision gets full feedback; earlier ones this hand shrink to one line each.
+  const shownIndex = coach?.decisionIndex ?? decisions.length;
+  const earlier = useMemo(
+    () => decisions.slice(0, shownIndex).map((d) => ({ d, fb: evaluateDecision(d.ctx, d.action, d.amountTo) })),
+    [decisions, shownIndex],
+  );
+
   if (mode === 'off') return null;
   const decision = coach ? decisions[coach.decisionIndex] : undefined;
+  const seen = new Set(earlier.flatMap(({ fb }) => fb.background.map(pointGist)));
+  const freshBackground = coach?.feedback?.background.filter((p) => !seen.has(pointGist(p))) ?? [];
 
   return (
     <section className="panel" aria-label="Coach" aria-live="polite" data-tour="coach-panel">
@@ -45,6 +59,21 @@ export function CoachPanel({ mode, coach, decisions, heroContext, holdTable, beg
         )}
       </h2>
 
+      {lastHand && decisions.length === 0 && <LastHandNote lastHand={lastHand} />}
+
+      {earlier.length > 0 && (
+        <div className="recap">
+          <div className="recap-title">Earlier this hand</div>
+          <ul>
+            {earlier.map(({ d, fb }, i) => (
+              <li key={i} className={fb.verdict}>
+                {decisionRecap(d.ctx.street, d.action, fb)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {hint && heroContext && <HintCard ctx={heroContext} beginner={beginner} />}
 
       {coach?.awaitingWhy && decision ? (
@@ -52,6 +81,7 @@ export function CoachPanel({ mode, coach, decisions, heroContext, holdTable, beg
       ) : coach?.feedback ? (
         <FeedbackCard
           feedback={coach.feedback}
+          background={freshBackground}
           replies={coach.replies}
           note={decision?.note ?? ''}
           beginner={beginner}
@@ -78,11 +108,33 @@ export function CoachPanel({ mode, coach, decisions, heroContext, holdTable, beg
   );
 }
 
+export function LastHandNote({ lastHand }: { lastHand: LastHand }) {
+  const { net, lesson } = lastHand;
+  return (
+    <div className="recap">
+      <div className="recap-title">Last hand</div>
+      <p>
+        <b className={net > 0 ? 'pos' : net < 0 ? 'neg' : ''}>
+          {net > 0 ? '+' : ''}
+          {net} chips.
+        </b>{' '}
+        {lesson ? (
+          <>
+            Key lesson — <TermText text={lesson} />
+          </>
+        ) : (
+          'No leaks in your decisions.'
+        )}
+      </p>
+    </div>
+  );
+}
+
 function HintCard({ ctx, beginner }: { ctx: DecisionContext; beginner: boolean }) {
   const rec = recommend(ctx);
   return (
     <div className="reply" style={{ marginTop: 0, marginBottom: 10 }}>
-      <b>Coach would {rec.move}.</b> <TermText text={rec.why} />
+      <b>Coach would {rec.allIn ? 'go all-in' : rec.move}.</b> <TermText text={rec.why} />
       {beginner && <p className="plain">💡 {plainEnglish(ctx, rec)}</p>}
     </div>
   );
@@ -133,12 +185,15 @@ function WhyPrompt({ action, street, onAnswer }: { action: string; street: strin
 
 export function FeedbackCard({
   feedback,
+  background = feedback.background,
   replies,
   note,
   title,
   beginner,
 }: {
   feedback: CoachFeedback;
+  /** Which background lines to show; defaults to all of them. */
+  background?: string[];
   replies: string[];
   note: string;
   title?: string;
@@ -161,7 +216,7 @@ export function FeedbackCard({
         </p>
       )}
       <ul className="points" data-tour="feedback-points">
-        {feedback.points.map((p) => (
+        {[...feedback.points, ...background].map((p) => (
           <li key={p}>
             <TermText text={p} />
           </li>

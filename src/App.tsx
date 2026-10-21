@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BeginnerView } from './components/BeginnerView';
 import { FriendsView } from './components/FriendsView';
 import { LearnView } from './components/LearnView';
@@ -16,14 +16,18 @@ import { ITERATIONS, type SaveResult, type Settings, useSettings } from './hooks
 
 type Tab = 'play' | 'beginner' | 'review' | 'quiz' | 'ranges' | 'friends' | 'profile' | 'learn';
 
+// Always visible in the header. Profile is reached through the account button.
 const TABS: { id: Tab; label: string }[] = [
   { id: 'play', label: 'Play & Train' },
   { id: 'beginner', label: 'Beginner' },
+  { id: 'friends', label: 'Friends' },
+];
+
+// Less-used sections, tucked behind the burger menu.
+const MENU_TABS: { id: Tab; label: string }[] = [
   { id: 'review', label: 'Hand Review' },
   { id: 'quiz', label: 'Which Hand Wins?' },
   { id: 'ranges', label: 'Ranges' },
-  { id: 'friends', label: 'Friends' },
-  { id: 'profile', label: 'Profile' },
   { id: 'learn', label: 'Learn' },
 ];
 
@@ -79,12 +83,8 @@ function Shell({ settings, save }: { settings: Settings; save: (next: Settings) 
             </button>
           ))}
         </nav>
+        <BurgerMenu tab={tab} onSelect={setTab} onTour={tour.enabled ? tour.replay : undefined} />
         <div className="header-right">
-          {tour.enabled && (
-            <button className="icon-btn" onClick={tour.replay} data-tour="tour-button" title="Replay the tutorial for this screen">
-              Tour
-            </button>
-          )}
           <button className="icon-btn" onClick={() => setTab('profile')} title={user ? 'Your profile and saved games' : 'Log in or create an account'}>
             {user ? user.username : 'Log in'}
           </button>
@@ -128,6 +128,66 @@ function Shell({ settings, save }: { settings: Settings; save: (next: Settings) 
       </main>
 
       {showSettings && <SettingsDrawer settings={settings} save={save} onClose={() => setShowSettings(false)} />}
+    </div>
+  );
+}
+
+function BurgerMenu({ tab, onSelect, onTour }: { tab: Tab; onSelect: (t: Tab) => void; onTour?: () => void }) {
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  const current = MENU_TABS.find((t) => t.id === tab);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (e: PointerEvent) => {
+      if (!root.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const pick = (fn: () => void) => {
+    setOpen(false);
+    fn();
+  };
+
+  return (
+    <div className="burger" ref={root}>
+      <button
+        className={`burger-btn${current ? ' active' : ''}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        data-tour="more-menu"
+        title="More sections"
+      >
+        <span className="burger-icon" aria-hidden="true">☰</span>
+        {current ? current.label : 'More'}
+      </button>
+      {open && (
+        <div className="burger-menu" role="menu">
+          {MENU_TABS.map((t) => (
+            <button key={t.id} role="menuitem" aria-current={tab === t.id} onClick={() => pick(() => onSelect(t.id))}>
+              {t.label}
+            </button>
+          ))}
+          {onTour && (
+            <>
+              <hr />
+              <button role="menuitem" onClick={() => pick(onTour)} title="Replay the tutorial for this screen">
+                Replay tour
+              </button>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

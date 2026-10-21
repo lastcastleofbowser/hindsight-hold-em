@@ -24,7 +24,7 @@ function describeDecision(r: DecisionReview, index: number, opts: ChatOptions = 
   lines.push(`**${index + 1}. ${STREET_LABELS[ctx.street]}${ctx.board.length ? ` (${cardsLabel(ctx.board)})` : ''} — you ${action}${amount}.**`);
   lines.push(`${verdictIcon[r.feedback.verdict]} *${VERDICT_LABELS[r.feedback.verdict]}.* ${r.feedback.headline}`);
   if (opts.beginner) lines.push(`💡 In plain English: ${r.feedback.simple}`);
-  for (const p of r.feedback.points) lines.push(`- ${p}`);
+  for (const p of [...r.feedback.points, ...r.feedback.background]) lines.push(`- ${p}`);
   if (note.trim()) lines.push(`You said: "${note.trim()}"`);
   for (const reply of r.reasonReplies) lines.push(`- ${reply}`);
   if (r.hindsightEquity !== null) {

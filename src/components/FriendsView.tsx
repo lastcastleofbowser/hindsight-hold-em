@@ -8,6 +8,7 @@ import { useOnline } from '../hooks/useOnline';
 import { ActionBar } from './ActionBar';
 import { AuthPanel } from './AuthPanel';
 import { PokerTable } from './PokerTable';
+import { SteadyArea } from './SteadyArea';
 import { TermText } from './Term';
 import { useAutoTour } from './Tour';
 
@@ -232,7 +233,9 @@ function FriendsTable({
             </div>
           )}
         </div>
-        <div className="action-area">{actionArea}</div>
+        <SteadyArea>
+          <div className="action-area">{actionArea}</div>
+        </SteadyArea>
       </div>
 
       <div className="side">

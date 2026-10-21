@@ -13,6 +13,8 @@ const SEEN_KEY = 'hindsight-holdem.tours-seen.v1';
 
 interface TourApi {
   enabled: boolean;
+  /** A tour is on screen right now. */
+  open: boolean;
   /** Start a tour if tutorial mode is on and it hasn't been seen. */
   request: (id: TourId) => void;
   /** Replay the most recently requested tour, even if seen. */
@@ -25,7 +27,7 @@ interface ActiveTour {
   steps: TourStep[];
 }
 
-const TourContext = createContext<TourApi>({ enabled: false, request: () => {}, replay: () => {} });
+const TourContext = createContext<TourApi>({ enabled: false, open: false, request: () => {}, replay: () => {} });
 
 function loadSeen(): Set<TourId> {
   try {
@@ -51,8 +53,8 @@ export function TourProvider({ enabled, onTurnOff, children }: { enabled: boolea
   // Mirror of `active` so callbacks can read it without side effects inside state updaters.
   const activeRef = useRef(active);
   const setActive = useCallback((next: { id: TourId; step: number } | null) => {
-    // Only keep steps whose highlighted element is on screen now (untargeted steps always stay).
-    const resolved = next ? { ...next, steps: TOURS[next.id].filter((s) => !s.target || findTarget(s.target)) } : null;
+    // Only keep steps whose highlighted element is on screen now, or in a closed tab that will open for it (untargeted steps always stay).
+    const resolved = next ? { ...next, steps: TOURS[next.id].filter((s) => !s.target || findTarget(s.target) || inClosedTab(s.target)) } : null;
     const value = resolved && resolved.steps.length ? resolved : null;
     activeRef.current = value;
     setActiveState(value);
@@ -99,7 +101,7 @@ export function TourProvider({ enabled, onTurnOff, children }: { enabled: boolea
   }, [setActive]);
 
   return (
-    <TourContext.Provider value={{ enabled, request, replay }}>
+    <TourContext.Provider value={{ enabled, open: active !== null, request, replay }}>
       {children}
       {active && (
         <TourOverlay
@@ -143,6 +145,12 @@ interface Rect {
   height: number;
 }
 
+/** Fired with a step's target name before it is looked up, so tabbed panels can open the tab holding it. */
+export const TOUR_REVEAL_EVENT = 'tour:reveal';
+
+/** The target exists inside a tab that is closed right now (see SideTabs). */
+const inClosedTab = (target: string) => !!document.querySelector(`[data-side-tab][hidden] [data-tour="${CSS.escape(target)}"]`);
+
 function findTarget(target?: string): HTMLElement | null {
   if (!target) return null;
   const all = document.querySelectorAll<HTMLElement>(`[data-tour="${target}"]`);
@@ -177,26 +185,38 @@ function TourOverlay({
   }, []);
 
   useLayoutEffect(() => {
-    const el = findTarget(current.target);
-    if (!el) {
-      setRect(null);
-      return;
-    }
-    // On phones the card is a bottom sheet, so bring the target to the top of the screen.
-    el.scrollIntoView({ block: window.innerWidth <= 560 ? 'start' : 'center', behavior: 'auto' });
-    if (window.innerWidth <= 560) window.scrollBy(0, -12);
-    const measure = () => {
-      const r = el.getBoundingClientRect();
-      setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
+    let detach: (() => void) | undefined;
+    const attach = (): boolean => {
+      const el = findTarget(current.target);
+      if (!el) return false;
+      // On phones the card is a bottom sheet, so bring the target to the top of the screen.
+      el.scrollIntoView({ block: window.innerWidth <= 560 ? 'start' : 'center', behavior: 'auto' });
+      if (window.innerWidth <= 560) window.scrollBy(0, -12);
+      const measure = () => {
+        const r = el.getBoundingClientRect();
+        setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
+      };
+      measure();
+      const t = setTimeout(measure, 350);
+      window.addEventListener('resize', measure);
+      window.addEventListener('scroll', measure, true);
+      detach = () => {
+        clearTimeout(t);
+        window.removeEventListener('resize', measure);
+        window.removeEventListener('scroll', measure, true);
+      };
+      return true;
     };
-    measure();
-    const t = setTimeout(measure, 350);
-    window.addEventListener('resize', measure);
-    window.addEventListener('scroll', measure, true);
+    // The target may sit in a closed tab: ask for it to be shown, then look again once that has rendered.
+    if (current.target) document.dispatchEvent(new CustomEvent(TOUR_REVEAL_EVENT, { detail: current.target }));
+    let frame = 0;
+    if (!attach()) {
+      setRect(null);
+      frame = requestAnimationFrame(() => void attach());
+    }
     return () => {
-      clearTimeout(t);
-      window.removeEventListener('resize', measure);
-      window.removeEventListener('scroll', measure, true);
+      cancelAnimationFrame(frame);
+      detach?.();
     };
   }, [current.target]);
 

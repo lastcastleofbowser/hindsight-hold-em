@@ -8,6 +8,8 @@ import {
   analyseThreats,
   bettingRange,
   calculateEquity,
+  callValue,
+  oneIn,
   countOuts,
   findNuts,
   pct,
@@ -33,7 +35,10 @@ export interface DecisionContext {
   pot: number;
   toCall: number;
   bigBlind: number;
+  /** Hero's chips behind (not yet in the pot). */
   heroStack: number;
+  /** Chips actually in play: the smaller of hero's stack and the biggest opponent's. Defaults to heroStack. */
+  effectiveStack?: number;
   /** Equity against random hands. */
   equity: EquityResult;
   /** Equity against a typical betting range; set when hero faces a bet after the flop. */
@@ -59,6 +64,7 @@ export function buildContext(args: {
   toCall: number;
   bigBlind: number;
   heroStack: number;
+  effectiveStack?: number;
   iterations?: number;
   equity?: EquityResult;
   position?: Position;
@@ -100,10 +106,91 @@ export interface Recommendation {
   kind?: 'value' | 'bluff' | 'semi-bluff' | 'c-bet';
   /** Suggested bet size as a fraction of the pot. */
   size?: number;
+  /** The stacks are short enough that the bet or raise should be all-in. */
+  allIn?: boolean;
 }
 
 /** Fair share of the pot if everyone's hand were equal. */
 export const fairShare = (opponents: number) => 1 / (opponents + 1);
+
+// ---------------------------------------------------------------------------
+// Stack sizes and limping
+// ---------------------------------------------------------------------------
+
+/** At or below this many big blinds, pre-flop play becomes all-in or fold. */
+const SHORT_STACK_BB = 12;
+
+/** Chips that can actually be won or lost in this hand. */
+export const effectiveStack = (ctx: DecisionContext) => (ctx.effectiveStack ? Math.min(ctx.heroStack, ctx.effectiveStack) : ctx.heroStack);
+
+/** Effective stack measured in big blinds. */
+export const stackInBlinds = (ctx: DecisionContext) => Math.round(effectiveStack(ctx) / Math.max(1, ctx.bigBlind));
+
+/**
+ * Pre-flop, nobody owes more than one big blind until someone raises — and the
+ * big blind owes nothing at all, so any chips to call there mean a raise.
+ */
+const isFacingRaise = (ctx: DecisionContext) => ctx.toCall > ctx.bigBlind || (ctx.position === 'BB' && ctx.toCall > 0);
+
+/** Pre-flop, unraised, with chips to put in: just calling here is "limping". */
+export const isLimpSpot = (ctx: DecisionContext) => ctx.street === 'preflop' && ctx.toCall > 0 && !isFacingRaise(ctx);
+
+/** Someone has already limped in front of hero (the pot holds more than the blinds). */
+const othersLimped = (ctx: DecisionContext) => ctx.pot > ctx.bigBlind * 2;
+
+const LIMPERS_NOTE = 'Players who limp in front of you usually have weak hands, so a raise often takes the pot or gets you heads-up.';
+
+const LIMP_POINT =
+  'Limping — just calling the big blind instead of raising — is a leak. It gives the big blind a cheap flop, invites more players in, can never win the pot before the flop, and tells everyone your hand is only middling. Raise the hands you want to play and fold the rest.';
+
+const LIMP_PLAIN =
+  'Just calling the big blind here is called "limping". It looks cheap, but it is a bad habit: it lets everyone else in cheaply, and you can never win the pot straight away. With a hand worth playing, raise; otherwise fold.';
+
+/** In a limp spot, the advice is always raise or fold — never just call. */
+function noLimp(ctx: DecisionContext, rec: Recommendation): Recommendation {
+  if (!isLimpSpot(ctx)) return rec;
+  const extra = othersLimped(ctx) ? ` ${LIMPERS_NOTE}` : '';
+  return { ...rec, acceptable: rec.acceptable.filter((m) => m !== 'call'), why: `${rec.why} Don't just call ("limp") — raise or fold.${extra}` };
+}
+
+/** With a short stack, a pre-flop raise should be an all-in. */
+function shortStackPreflop(ctx: DecisionContext, rec: Recommendation): Recommendation {
+  const depth = stackInBlinds(ctx);
+  if (depth > SHORT_STACK_BB || !isAggressive(rec.move)) return rec;
+  return {
+    ...rec,
+    allIn: true,
+    why: `${rec.why} With only ${depth} big blinds, go all-in rather than making a small raise: a raise would tie up most of your chips anyway, and an all-in makes them fold more often.`,
+  };
+}
+
+/** When a normal-sized bet would be half the stack or more, betting it all is cleaner. */
+function commitIfShallow(ctx: DecisionContext, rec: Recommendation, betSize: number): Recommendation {
+  const eff = effectiveStack(ctx);
+  if (eff <= 0 || betSize < eff * 0.5) return rec;
+  return { ...rec, allIn: true, why: `${rec.why} You only have ${eff} chips in play against a pot of ${ctx.pot}, so move all-in — a smaller bet would commit you anyway.` };
+}
+
+/** One line on how deep the stacks are and what that means for this decision. */
+export function stackPoint(ctx: DecisionContext): string {
+  const eff = effectiveStack(ctx);
+  const covered = eff < ctx.heroStack ? ` — but the most you can win or lose against the players left is ${eff}` : '';
+  const base = `Chips: you have ${ctx.heroStack} (${Math.round(ctx.heroStack / Math.max(1, ctx.bigBlind))} big blinds)${covered}.`;
+  if (ctx.street === 'preflop') {
+    const depth = stackInBlinds(ctx);
+    if (depth <= SHORT_STACK_BB) return `${base} That is a short stack: play fewer hands, and when you do play, go all-in rather than raising small.`;
+    if (depth >= 150) return `${base} The stacks are deep, so hands that make straights and flushes gain value — a big hand can win a big pot.`;
+    return base;
+  }
+  const spr = eff / Math.max(1, ctx.pot);
+  const meaning =
+    spr <= 3
+      ? 'low — with top pair or better you are committed, so get your chips in rather than folding later'
+      : spr >= 10
+        ? 'high — one pair is rarely worth your whole stack, so keep the pot small with medium hands'
+        : 'medium — a strong pair can bet for value, but slow down if you meet a big raise';
+  return `${base} Stack-to-pot ratio ${spr.toFixed(1)}: ${meaning}.`;
+}
 
 /**
  * Equity vs random hands overstates our chances when someone has bet, so
@@ -193,6 +280,24 @@ function bluffSpot(ctx: DecisionContext, eq: number): Recommendation | null {
   return null;
 }
 
+/** Pre-flop advice from hand strength alone, when the position charts don't cover the spot. */
+function generalPreflop(ctx: DecisionContext, facingRaise: boolean, need: number): Recommendation {
+  const { tier, notation } = ctx.start;
+  if (tier === 'Premium') return { move: 'raise', acceptable: ['raise', 'bet'], why: `${notation} is a premium hand — raise to build the pot and thin the field.` };
+  if (!facingRaise) {
+    if (tier === 'Strong') return { move: 'raise', acceptable: ['raise', 'bet'], why: `${notation} is strong enough to open with a raise.` };
+    if (ctx.toCall === 0)
+      return tier === 'Playable'
+        ? { move: 'check', acceptable: ['check', 'raise', 'bet'], why: `${notation} is playable; checking your option is fine.` }
+        : { move: 'check', acceptable: ['check'], why: `Free flop in the big blind — never fold for free.` };
+    if (tier === 'Playable') return { move: 'raise', acceptable: ['raise', 'bet', 'fold'], why: `${notation} is playable — raise to take the lead.` };
+    return { move: 'fold', acceptable: ['fold'], why: `${notation} is ${tier.toLowerCase()} — it loses money over time from here.` };
+  }
+  if (tier === 'Strong') return { move: 'call', acceptable: ['call', 'raise'], why: `${notation} is strong enough to continue against a raise.` };
+  if (tier === 'Playable' && need <= 0.25) return { move: 'call', acceptable: ['call', 'fold'], why: `${notation} can call a small raise and see a flop.` };
+  return { move: 'fold', acceptable: ['fold'], why: `${notation} is too weak to call a raise.` };
+}
+
 const hasStrongDraw = (ctx: DecisionContext) =>
   !!ctx.outs && ctx.outs.total >= 8 && (ctx.street === 'flop' || ctx.street === 'turn');
 
@@ -202,36 +307,26 @@ export function recommend(ctx: DecisionContext): Recommendation {
   const value = valueLine(ctx.opponents);
 
   if (ctx.street === 'preflop') {
-    const { tier, notation } = ctx.start;
-    const facingRaise = ctx.toCall > ctx.bigBlind;
+    const facingRaise = isFacingRaise(ctx);
     const chartRec = ctx.position ? chartRecommendation(ctx, ctx.position, facingRaise) : null;
-    if (chartRec) return chartRec;
-    if (tier === 'Premium') return { move: 'raise', acceptable: ['raise', 'bet'], why: `${notation} is a premium hand — raise to build the pot and thin the field.` };
-    if (!facingRaise) {
-      if (tier === 'Strong') return { move: 'raise', acceptable: ['raise', 'bet', 'call'], why: `${notation} is strong enough to open with a raise.` };
-      if (tier === 'Playable')
-        return ctx.toCall === 0
-          ? { move: 'check', acceptable: ['check', 'raise', 'bet'], why: `${notation} is playable; checking your option is fine.` }
-          : { move: 'call', acceptable: ['call', 'raise'], why: `${notation} is playable for a small price.` };
-      if (ctx.toCall === 0) return { move: 'check', acceptable: ['check'], why: `Free flop in the big blind — never fold for free.` };
-      if (tier === 'Marginal' && ctx.toCall <= ctx.bigBlind / 2)
-        return { move: 'call', acceptable: ['call', 'fold'], why: `${notation} is marginal; completing the small blind is cheap.` };
-      return { move: 'fold', acceptable: ['fold'], why: `${notation} is ${tier.toLowerCase()} — it loses money over time from here.` };
-    }
-    if (tier === 'Strong') return { move: 'call', acceptable: ['call', 'raise'], why: `${notation} is strong enough to continue against a raise.` };
-    if (tier === 'Playable' && need <= 0.25) return { move: 'call', acceptable: ['call', 'fold'], why: `${notation} can call a small raise and see a flop.` };
-    return { move: 'fold', acceptable: ['fold'], why: `${notation} is too weak to call a raise.` };
+    return shortStackPreflop(ctx, noLimp(ctx, chartRec ?? generalPreflop(ctx, facingRaise, need)));
   }
 
   if (ctx.toCall > 0) {
-    if (eq >= value + 0.1) return { move: 'raise', acceptable: ['raise', 'call'], why: `You're well ahead of a typical betting range — raise for value.` };
+    if (eq >= value + 0.1)
+      return commitIfShallow(ctx, { move: 'raise', acceptable: ['raise', 'call'], why: `You're well ahead of a typical betting range — raise for value.` }, ctx.toCall * 3);
     if (eq >= need) return { move: 'call', acceptable: ['call'], why: `Your equity (${pct(eq)}) beats the ${pct(need)} the pot odds require.` };
     if (hasStrongDraw(ctx) && eq >= need * 0.75)
       return { move: 'call', acceptable: ['call', 'fold'], why: `Slightly short on direct odds, but ${ctx.outs!.total} outs give implied odds when you hit.` };
     return { move: 'fold', acceptable: ['fold'], why: `You need ${pct(need)} equity to call but only have about ${pct(eq)}.` };
   }
 
-  if (eq >= value) return { move: 'bet', acceptable: ['bet', 'raise'], kind: 'value', size: 0.6, why: `With ${pct(eq)} equity vs ${ctx.opponents} opponent(s) you should bet for value.` };
+  if (eq >= value)
+    return commitIfShallow(
+      ctx,
+      { move: 'bet', acceptable: ['bet', 'raise'], kind: 'value', size: 0.6, why: `With ${pct(eq)} equity vs ${ctx.opponents} opponent(s) you should bet for value.` },
+      ctx.pot * 0.6,
+    );
   if (hasStrongDraw(ctx))
     return { move: 'bet', acceptable: ['bet', 'raise', 'check'], kind: 'semi-bluff', size: 0.6, why: `A semi-bluff with ${ctx.outs!.total} outs can win now or improve later.` };
   const bluff = bluffSpot(ctx, eq);
@@ -250,8 +345,10 @@ export interface CoachFeedback {
   verdict: Verdict;
   headline: string;
   recommendation: Recommendation;
-  /** Numbers and reasoning, one sentence each. */
+  /** Numbers and reasoning about this decision, one sentence each. */
   points: string[];
+  /** Background that often stays the same all hand (chips, opponent reads); shown again only when it changes. */
+  background: string[];
   /** The same advice in plain English for new players, with no jargon. */
   simple: string;
 }
@@ -273,7 +370,9 @@ export function plainEnglish(ctx: DecisionContext, rec: Recommendation): string 
   } else {
     parts.push(`If this hand were played to the end many times, you would win ${outOfTen(eq)} times out of 10.`);
   }
-  if (ctx.toCall > 0) {
+  if (isLimpSpot(ctx)) {
+    parts.push(LIMP_PLAIN);
+  } else if (ctx.toCall > 0) {
     const need = requiredEquity(ctx.toCall, ctx.pot);
     parts.push(`Calling costs ${ctx.toCall} to win a pot of ${ctx.pot + ctx.toCall}, so it pays off if you win more than ${outOfTen(need)} times out of 10.`);
     parts.push(eq >= need ? 'You win more often than that, so staying in makes money over time.' : 'You win less often than that, so calling loses money over time and folding saves chips.');
@@ -288,6 +387,13 @@ export function plainEnglish(ctx: DecisionContext, rec: Recommendation): string 
   } else if (rec.move === 'check') {
     parts.push(ctx.street === 'river' ? 'Your hand is not strong enough to bet: only better hands would pay you now.' : 'Your hand is not strong enough to bet, and checking lets you see the next card for free.');
   }
+  if (ctx.toCall > 0 && ctx.heroStack > 0 && ctx.toCall >= ctx.heroStack * 0.3) {
+    parts.push(`This call uses ${pct(Math.min(1, ctx.toCall / ctx.heroStack))} of the ${ctx.heroStack} chips you have left, so be sure before you put them in.`);
+  } else if (stackInBlinds(ctx) <= SHORT_STACK_BB) {
+    parts.push(`You are low on chips (about ${stackInBlinds(ctx)} big blinds), so wait for a good hand and go all-in with it rather than making small bets.`);
+  } else if (rec.allIn) {
+    parts.push('Your chips are small compared with the pot, so putting them all in now is simpler than a bet that commits you anyway.');
+  }
   return parts.join(' ');
 }
 
@@ -301,8 +407,11 @@ export function evaluateDecision(ctx: DecisionContext, action: ActionType, amoun
   const need = requiredEquity(ctx.toCall, ctx.pot);
   const sameFamily = (a: Move, b: Move) => a === b || (isAggressive(a) && isAggressive(b));
 
+  const limped = isLimpSpot(ctx) && move === 'call';
+
   let verdict: Verdict;
-  if (sameFamily(move, rec.move)) verdict = 'great';
+  if (limped) verdict = rec.move === 'fold' ? 'mistake' : 'questionable';
+  else if (sameFamily(move, rec.move)) verdict = 'great';
   else if (rec.acceptable.some((m) => sameFamily(m, move))) verdict = 'good';
   else if (move === 'fold' && ctx.toCall === 0) verdict = 'mistake';
   else if (move === 'fold') verdict = eq > need + 0.1 ? 'mistake' : 'questionable';
@@ -315,11 +424,23 @@ export function evaluateDecision(ctx: DecisionContext, action: ActionType, amoun
     `Equity: ${pct(ctx.equity.equity)} against ${ctx.opponents} random hand${ctx.opponents > 1 ? 's' : ''} (an even share would be ${pct(fairShare(ctx.opponents))}).`,
   );
   if (ctx.toCall > 0) {
-    points.push(`Pot odds: calling ${ctx.toCall} into ${ctx.pot} needs ${pct(need)} equity to break even.`);
+    const value = Math.round(callValue(eq, ctx.toCall, ctx.pot));
+    points.push(
+      `Pot odds: calling costs ${ctx.toCall} to win a pot of ${ctx.pot + ctx.toCall}. ${ctx.toCall} ÷ ${ctx.pot + ctx.toCall} = ${pct(need)}, so a call has to win about ${oneIn(need)} times to break even. You win about ${pct(eq)}, so calling ${value >= 0 ? 'gains' : 'loses'} about ${Math.abs(value)} chips on average.`,
+    );
     if (ctx.rangeEquity && !ctx.reads?.length) points.push(`Players who bet usually hold a pair or a draw. Against that kind of range your equity is about ${pct(eq)}.`);
   }
+  if (limped) points.push(othersLimped(ctx) ? `${LIMP_POINT} ${LIMPERS_NOTE}` : LIMP_POINT);
+  else if (isLimpSpot(ctx) && isAggressive(move)) points.push('Raising instead of just calling (limping) is the right habit: you can win the pot straight away, and you take the lead into the flop.');
+  const background = [stackPoint(ctx)];
+  if (ctx.toCall > 0 && ctx.heroStack > 0 && ctx.toCall >= ctx.heroStack * 0.25) {
+    points.push(`That call cost ${pct(Math.min(1, ctx.toCall / ctx.heroStack))} of your remaining chips${ctx.toCall >= ctx.heroStack ? ' — calling put you all-in' : ''}.`);
+  }
+  if (rec.allIn && isAggressive(move) && amountTo !== undefined && amountTo < ctx.heroStack * 0.9) {
+    points.push('With stacks this short, an all-in is better than a smaller raise: it gets the most folds, and you will not be left with too few chips to play the next street.');
+  }
   for (const read of (ctx.reads ?? []).filter((r) => r.steps.length > 0).slice(0, 2)) {
-    points.push(`Read: ${read.summary}`);
+    background.push(`Read: ${read.summary}`);
   }
   if (ctx.reads?.length && ctx.rangeEquity) {
     points.push(`Against the hands their actions suggest, you win about ${pct(ctx.rangeEquity.equity)} (vs ${pct(ctx.equity.equity)} against random cards).`);
@@ -352,7 +473,28 @@ export function evaluateDecision(ctx: DecisionContext, action: ActionType, amoun
         ? `A ${move} is fine here, though ${rec.move} is slightly better. ${rec.why}`
         : `Better was to ${rec.move}. ${rec.why}`;
 
-  return { verdict, headline, recommendation: rec, points, simple: plainEnglish(ctx, rec) };
+  return { verdict, headline, recommendation: rec, points, background, simple: plainEnglish(ctx, rec) };
+}
+
+/**
+ * Background lines are worth repeating only when what they say changes, not
+ * just a number in them ("Chips: you have 980…" vs "…960…" is the same news).
+ */
+export const pointGist = (p: string) => p.replace(/\d+(\.\d+)?/g, '#');
+
+const firstSentence = (s: string) => s.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? s;
+
+const PAST_TENSE: Record<ActionType, string> = { fold: 'folded', check: 'checked', call: 'called', bet: 'bet', raise: 'raised' };
+
+/** One line summing up a decision, for "earlier this hand" recaps. */
+export function decisionRecap(street: Street, action: ActionType, fb: CoachFeedback): string {
+  const off = fb.verdict === 'questionable' || fb.verdict === 'mistake';
+  return `${STREET_LABELS[street]}: you ${PAST_TENSE[action]} — ${VERDICT_LABELS[fb.verdict]}${off ? ` (better to ${fb.recommendation.move})` : ''}.`;
+}
+
+/** The single most useful takeaway from a decision that went wrong. */
+export function keyLesson(street: Street, action: ActionType, fb: CoachFeedback): string {
+  return `${decisionRecap(street, action, fb)} ${firstSentence(fb.recommendation.why)}`;
 }
 
 const value = (ctx: DecisionContext) => valueLine(ctx.opponents);
@@ -438,8 +580,15 @@ export function respondToReason(ctx: DecisionContext, action: ActionType, tags: 
         if (action === 'fold' && eq > need + 0.1) replies.push(`Folding here gives up too much — playing scared is one of the most expensive leaks.`);
         break;
       case 'cheap':
-        if (ctx.toCall === 0) replies.push('Checking was free, so seeing another card is always fine when you are not betting for value.');
-        else replies.push(`"Cheap" is relative: ${ctx.toCall} chips needs ${pct(need)} equity. You had about ${pct(eq)}, so it ${eq >= need ? 'was' : "wasn't"} a good price.`);
+        if (isLimpSpot(ctx) && action === 'call')
+          replies.push(
+            `It is cheap — that is exactly what makes limping tempting. But a limp invites everyone in and can never win the pot before the flop. If a hand is worth putting in a big blind, it is usually worth a raise; if not, fold it.`,
+          );
+        else if (ctx.toCall === 0) replies.push('Checking was free, so seeing another card is always fine when you are not betting for value.');
+        else
+          replies.push(
+            `"Cheap" is relative: ${ctx.toCall} chips needs ${pct(need)} equity. You had about ${pct(eq)}, so it ${eq >= need ? 'was' : "wasn't"} a good price. That's ${pct(Math.min(1, ctx.toCall / Math.max(1, ctx.heroStack)))} of your ${ctx.heroStack} chips.`,
+          );
         break;
       case 'position':
         replies.push('Position matters: acting last lets you see what others do first. It justifies playing slightly more hands, not ignoring hand strength.');

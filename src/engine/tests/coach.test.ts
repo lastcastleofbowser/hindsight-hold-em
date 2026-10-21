@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseCards, seededRng } from '../cards';
 import { bettingRange, calculateEquity, countOuts } from '../analysis';
-import { buildContext, evaluateDecision, inferReasons, recommend, respondToReason } from '../coach';
+import { VERDICT_LABELS, buildContext, decisionRecap, evaluateDecision, inferReasons, keyLesson, pointGist, recommend, respondToReason } from '../coach';
 import { offlineReply } from '../chat';
 import { reviewHand, resolveShowdown } from '../review';
 import type { Street } from '../game';
@@ -69,6 +69,60 @@ describe('coach', () => {
   it('folds trash pre-flop and raises aces', () => {
     expect(recommend(ctx('preflop', '7c 2d', '', 1.5, 1)).move).toBe('fold');
     expect(recommend(ctx('preflop', 'As Ah', '', 1.5, 1)).move).toBe('raise');
+  });
+
+  it('never recommends limping, and grades a limp down with an explanation', () => {
+    for (const hole of ['9s 8s', 'Kd Jc', '7c 2d', 'As Ah']) {
+      expect(recommend(ctx('preflop', hole, '', 1.5, 1)).move).not.toBe('call');
+    }
+    const c = ctx('preflop', '9s 8s', '', 1.5, 1);
+    const fb = evaluateDecision(c, 'call');
+    expect(['questionable', 'mistake']).toContain(fb.verdict);
+    expect(fb.points.some((p) => p.startsWith('Limping'))).toBe(true);
+    expect(evaluateDecision(c, 'raise', 3).points.some((p) => p.includes('instead of just calling'))).toBe(true);
+    // Completing the small blind is a limp too.
+    expect(evaluateDecision(ctx('preflop', '9s 8s', '', 1.5, 0.5), 'call').verdict).not.toBe('great');
+  });
+
+  it('treats checking the big blind option as fine, not as a limp', () => {
+    const c = ctx('preflop', '9s 8s', '', 2, 0);
+    expect(['great', 'good']).toContain(evaluateDecision(c, 'check').verdict);
+    expect(evaluateDecision(c, 'check').points.some((p) => p.startsWith('Limping'))).toBe(false);
+  });
+
+  it('spots a min-raise against the big blind as a raise, not a limp', () => {
+    const c = buildContext({ street: 'preflop', hole: parseCards('7c 2d'), board: [], opponents: 1, pot: 3, toCall: 1, bigBlind: 1, heroStack: 99, iterations: 2000, position: 'BB' });
+    expect(evaluateDecision(c, 'call').points.some((p) => p.startsWith('Limping'))).toBe(false);
+  });
+
+  it('factors in the chip count', () => {
+    const short = buildContext({ street: 'preflop', hole: parseCards('As Ah'), board: [], opponents: 1, pot: 1.5, toCall: 1, bigBlind: 1, heroStack: 8, iterations: 2000 });
+    expect(recommend(short).allIn).toBe(true);
+    expect(evaluateDecision(short, 'raise', 3).background.some((p) => p.includes('short stack'))).toBe(true);
+
+    // Deep stacks: a normal value bet, and the stack-to-pot ratio is explained.
+    const deep = ctx('flop', 'As Ad', 'Ah 7c 2d', 6, 0);
+    expect(recommend(deep).allIn).toBeFalsy();
+    expect(evaluateDecision(deep, 'bet', 4).background.some((p) => p.includes('Stack-to-pot ratio'))).toBe(true);
+
+    // Little behind compared with the pot: just get it in.
+    const shallow = buildContext({ street: 'flop', hole: parseCards('As Ad'), board: parseCards('Ah 7c 2d'), opponents: 1, pot: 40, toCall: 0, bigBlind: 1, heroStack: 30, iterations: 2000 });
+    expect(recommend(shallow).allIn).toBe(true);
+
+    // A call that is a big part of the stack says so.
+    const big = buildContext({ street: 'turn', hole: parseCards('Ac 4d'), board: parseCards('Kh Qs 7d 2c'), opponents: 1, pot: 60, toCall: 40, bigBlind: 1, heroStack: 50, iterations: 2000 });
+    expect(evaluateDecision(big, 'call').points.some((p) => p.includes('of your remaining chips'))).toBe(true);
+  });
+
+  it('sums decisions up in one line and spots background that has not changed', () => {
+    const c = ctx('preflop', '9s 8s', '', 1.5, 1);
+    const fb = evaluateDecision(c, 'call');
+    expect(decisionRecap('preflop', 'call', fb)).toBe(`Pre-flop: you called — ${VERDICT_LABELS[fb.verdict]} (better to ${fb.recommendation.move}).`);
+    expect(decisionRecap('flop', 'raise', { ...fb, verdict: 'great' })).toBe('Flop: you raised — Great decision.');
+    expect(keyLesson('preflop', 'call', fb)).toMatch(/^Pre-flop: you called .*\.$/);
+    // Same message with different numbers is not news; a different meaning is.
+    expect(pointGist('Chips: you have 980 (98 big blinds).')).toBe(pointGist('Chips: you have 960 (96 big blinds).'));
+    expect(pointGist('Stack-to-pot ratio 12.5: high')).not.toBe(pointGist('Stack-to-pot ratio 2.1: low'));
   });
 
   it('reads reasons from free text without confusing "gutshot" with a gut feeling', () => {

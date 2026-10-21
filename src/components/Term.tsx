@@ -54,6 +54,55 @@ export function Term({ entry, children }: { entry: GlossaryEntry; children: Reac
   );
 }
 
+/**
+ * Any element with an explanation on hover, keyboard focus or tap — for
+ * visuals like the odds meter that aren't a glossary word.
+ */
+export function HoverTip({ title, tip, className, children }: { title: string; tip: ReactNode; className?: string; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ left: number; top: number; below: boolean } | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+  const id = useId();
+
+  useLayoutEffect(() => {
+    if (!open || !ref.current) return;
+    const r = ref.current.getBoundingClientRect();
+    const half = Math.min(150, window.innerWidth / 2 - 8);
+    const left = Math.min(Math.max(r.left + r.width / 2, half + 8), window.innerWidth - half - 8);
+    const below = r.top < 220;
+    setPos({ left, top: below ? r.bottom + 8 : r.top - 8, below });
+  }, [open]);
+
+  return (
+    <>
+      <div
+        ref={ref}
+        className={`hover-tip${className ? ` ${className}` : ''}`}
+        tabIndex={0}
+        role="button"
+        aria-label={title}
+        aria-describedby={open ? id : undefined}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        onClick={() => setOpen((o) => !o)}
+      >
+        {children}
+      </div>
+      {open &&
+        pos &&
+        createPortal(
+          <div id={id} role="tooltip" className={`term-tip wide${pos.below ? ' below' : ''}`} style={{ left: pos.left, top: pos.top }}>
+            <b>{title}</b>
+            {tip}
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}
+
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const PHRASES = [...GLOSSARY_INDEX.keys()].sort((a, b) => b.length - a.length);
 const TERM_RE = new RegExp(`(?<![\\w-])(${PHRASES.map(escape).join('|')})(?![\\w-])`, 'gi');

@@ -30,9 +30,10 @@ export type TourId =
 export const TOURS: Record<TourId, TourStep[]> = {
   'play-intro': [
     { title: "Welcome to Hindsight Hold'em", body: "This quick tour shows you around. You can turn tutorial mode off any time in Settings, or skip a tour with the Skip button." },
-    { target: 'tabs', title: 'The sections', body: 'Play & Train is the full table with live odds. Beginner is a calmer table where a coach talks you through every hand. Hand Review rebuilds a hand you played. Which Hand Wins? trains hand reading. Ranges shows which hands to play from each seat. Friends lets you play the same hand with friends online. Learn has the rules, rankings and glossary.' },
+    { target: 'tabs', title: 'The sections', body: 'Play & Train is the full table with live odds. Beginner is a calmer table where a coach talks you through every hand. Friends lets you play the same hand with friends online.' },
+    { target: 'more-menu', title: 'More sections', body: 'This menu holds the rest: Hand Review rebuilds a hand you played. Which Hand Wins? trains hand reading. Ranges shows which hands to play from each seat. Learn has the rules, rankings and glossary.' },
     { target: 'deal-button', title: 'Start a hand', body: 'Press this to sit down at the table. The tour continues when it is your turn to act.' },
-    { target: 'tour-button', title: 'Replay a tour', body: 'While tutorial mode is on, this button replays the tour for whatever you are looking at.' },
+    { target: 'more-menu', title: 'Replay a tour', body: 'While tutorial mode is on, choose Replay tour in this menu to replay the tour for whatever you are looking at.' },
     { target: 'settings-button', title: 'Settings', body: 'Change the number of opponents, the coach style, tutorial mode and more. Remember to press Save.' },
   ],
   'play-decision': [
@@ -42,10 +43,12 @@ export const TOURS: Record<TourId, TourStep[]> = {
     { target: 'hero-seat', title: 'Your cards', body: 'Your two hole cards. The green label underneath names the best hand you currently have.' },
     { target: 'pot', title: 'Betting round and pot', body: 'Which betting round it is (pre-flop, flop, turn, river) and how many chips are in the pot.' },
     { target: 'action-bar', title: 'Your actions', body: 'Fold gives up the hand. Check passes for free (when nobody has bet). Call matches a bet. Bet/Raise puts in more — choose the size with the quick buttons or the slider. Keyboard: F, C, B/R.' },
-    { target: 'coach-panel', title: 'The coach', body: 'Press Hint before you act to see what the coach would do. After you act, the coach asks why — then grades your decision.' },
+    { target: 'glance', title: 'At a glance', body: 'The numbers that matter right now: your chance to win, what you need to call, your outs and your current hand. Click them to open the Odds tab; the coloured grade opens the coach. The tabs below hold the detail.' },
+    { target: 'coach-panel', title: 'The coach', body: 'Press Hint before you act to see what the coach would do. After you act, the coach asks why — then grades your decision. A dot on the Coach tab means new feedback.' },
     { target: 'equity', title: 'Your chance to win', body: 'This big percentage is your "equity": how often you would win the pot if the hand were played out many times against random hands. 40% means about 4 times in 10.' },
-    { target: 'meter', title: 'The meter and its marks', body: 'The bar fills to your win chance. The white mark is an "even share" (50% against one player, 33% against two…). When someone has bet, an orange mark shows the win chance you need to make calling worthwhile.' },
-    { target: 'odds-rows', title: 'Win, split and pot odds', body: '"Win outright / split" separates clean wins from ties. "Needed to call" is the pot odds: call ÷ (pot + call). If your win chance is above it, calling makes money in the long run.' },
+    { target: 'meter', title: 'The meter and its marks', body: 'The bar fills to your win chance. The white mark is an "even share" (50% against one player, 33% against two…). When someone has bet, an orange mark shows the win chance you need to make calling worthwhile. Hover the meter any time for a reminder.' },
+    { target: 'odds-rows', title: 'Win, split and pot odds', body: '"Win outright / split" separates clean wins from ties. "Win chance needed to call" is the pot odds: call ÷ (pot + call). A ✓ means your win chance is above it, so calling makes money in the long run; ✗ means it is below.' },
+    { target: 'pot-odds', title: 'Should you call?', body: 'Whenever you face a bet, this works the pot odds out step by step with the real numbers — the price, the break-even point, your chance — and says how many chips calling wins or loses on average. Open "How to work this out at a real table" to learn the shortcut.' },
     { target: 'starting-hand', title: 'Starting hand', body: 'Before the flop, your two cards are rated from Premium to Weak. The Ranges tab shows exactly which hands to raise from each seat.' },
     { target: 'final-hand', title: 'Your final hand by the river', body: 'How likely you are to finish with each hand type once all five shared cards are out.' },
     { target: 'chart', title: 'Win chance by round', body: 'This graph tracks your win chance at each betting round: pre-flop, flop, turn, river. After the hand a dashed gold line appears showing your real chance against the cards opponents actually held — that is the "hindsight".' },
@@ -68,7 +71,7 @@ export const TOURS: Record<TourId, TourStep[]> = {
     { target: 'continue', title: 'Carry on', body: 'The table waits while you read. Press Continue to let the other players act.' },
   ],
   'play-summary': [
-    { target: 'summary-result', title: 'Hand result', body: 'Chips won or lost this hand and who took the pot. Stacks reset each hand, so every hand is a fresh lesson.' },
+    { target: 'summary-result', title: 'Hand result', body: 'Chips won or lost this hand and who took the pot. Your chips carry over to the next hand (and to your next visit).' },
     { target: 'showdown-check', title: 'Why this result?', body: 'When cards are shown, each player\'s best five cards are listed with the reason one hand beats the other.' },
     { target: 'read-check', title: 'Read check', body: 'Were their bets honest? For every opponent who bet, see whether the bet meant a real hand, a draw (semi-bluff) or nothing at all (bluff).' },
     { target: 'hindsight-cards', title: 'Hindsight', body: 'Everyone\'s cards are revealed after the hand — including players who folded — so you can see what you were really up against.' },

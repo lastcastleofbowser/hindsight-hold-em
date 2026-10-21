@@ -417,4 +417,17 @@ export function requiredEquity(toCall: number, potBeforeCall: number): number {
   return toCall / (potBeforeCall + toCall);
 }
 
+/**
+ * Chips a call wins or loses on average, counting only this bet: you collect
+ * the pot `equity` of the time and lose the call the rest of the time.
+ */
+export function callValue(equity: number, toCall: number, potBeforeCall: number): number {
+  return equity * potBeforeCall - (1 - equity) * toCall;
+}
+
+/** A probability as "1 in N" — easier to picture than a percentage. */
+export function oneIn(p: number): string {
+  return p <= 0 ? 'never' : `1 in ${Math.max(1, Math.round(1 / p))}`;
+}
+
 export const pct = (p: number, digits = 0): string => `${(p * 100).toFixed(digits)}%`;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseCards, seededRng } from '../cards';
 import { CATEGORY_NAMES, Category, evaluate, evaluateHand, categoryOf } from '../evaluator';
-import { analyseThreats, calculateEquity, countOuts, findNuts, startingHand, requiredEquity } from '../analysis';
+import { analyseThreats, calculateEquity, callValue, countOuts, findNuts, oneIn, startingHand, requiredEquity } from '../analysis';
 
 const score = (s: string) => evaluate(parseCards(s));
 const cat = (s: string) => categoryOf(score(s));
@@ -153,5 +153,14 @@ describe('starting hands', () => {
   it('computes pot odds', () => {
     expect(requiredEquity(50, 100)).toBeCloseTo(1 / 3);
     expect(requiredEquity(0, 100)).toBe(0);
+  });
+
+  it('values a call in chips, breaking even exactly at the pot odds', () => {
+    // Call 20 into 100: break-even is 20 / 120.
+    expect(callValue(20 / 120, 20, 100)).toBeCloseTo(0);
+    expect(callValue(0.5, 20, 100)).toBeCloseTo(40); // win 100 half the time, lose 20 the other half
+    expect(callValue(0.1, 20, 100)).toBeLessThan(0);
+    expect(oneIn(1 / 6)).toBe('1 in 6');
+    expect(oneIn(0.25)).toBe('1 in 4');
   });
 });
