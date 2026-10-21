@@ -1,14 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { parseCards, seededRng } from './cards';
-import { Category, evaluate, evaluateHand, categoryOf } from './evaluator';
-import { analyseThreats, calculateEquity, countOuts, findNuts, startingHand, requiredEquity } from './analysis';
+import { parseCards, seededRng } from '../cards';
+import { CATEGORY_NAMES, Category, evaluate, evaluateHand, categoryOf } from '../evaluator';
+import { analyseThreats, calculateEquity, countOuts, findNuts, startingHand, requiredEquity } from '../analysis';
 
 const score = (s: string) => evaluate(parseCards(s));
 const cat = (s: string) => categoryOf(score(s));
 
 describe('evaluator', () => {
   it('recognises every category', () => {
-    expect(cat('As Ks Qs Js Ts 2d 3c')).toBe(Category.StraightFlush);
+    expect(cat('As Ks Qs Js Ts 2d 3c')).toBe(Category.RoyalFlush);
+    expect(cat('9s Ks Qs Js Ts 2d 3c')).toBe(Category.StraightFlush);
     expect(cat('9h 9d 9s 9c Kd 2c 3s')).toBe(Category.Quads);
     expect(cat('Kh Kd Ks 7c 7d 2s 3h')).toBe(Category.FullHouse);
     expect(cat('2h 7h 9h Jh Kh As Ad')).toBe(Category.Flush);
@@ -31,6 +32,14 @@ describe('evaluator', () => {
     // Two pair on 7 cards with three pairs: best kicker may be the third pair.
     expect(score('Ah Ad Kc Ks 7d 7c 2h')).toBe(score('Ah Ad Kc Ks 7d'));
     expect(score('Ah Ad Kc Ks Qd 7c 7h')).toBe(score('Ah Ad Kc Ks Qd'));
+  });
+
+  it('ranks a royal flush above every straight flush and names it', () => {
+    expect(score('As Ks Qs Js Ts')).toBeGreaterThan(score('Ks Qs Js Ts 9s'));
+    expect(CATEGORY_NAMES[Category.RoyalFlush]).toBe('Royal Flush');
+    expect(evaluateHand(parseCards('Ah Kh Qh Jh Th 2c 2d')).name).toBe('Royal Flush');
+    // A royal flush is only ever ace-high; the wheel straight flush is five-high.
+    expect(evaluateHand(parseCards('Ah 2h 3h 4h 5h')).name).toBe('Straight Flush, Five high');
   });
 
   it('splits identical hands and picks the best full house', () => {

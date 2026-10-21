@@ -164,6 +164,37 @@ export interface CoachFeedback {
   recommendation: Recommendation;
   /** Numbers and reasoning, one sentence each. */
   points: string[];
+  /** The same advice in plain English for new players, with no jargon. */
+  simple: string;
+}
+
+/** "about 4" / "fewer than 1" — probabilities as times out of 10. */
+function outOfTen(p: number): string {
+  const n = Math.round(p * 10);
+  return n === 0 ? 'fewer than 1' : n === 10 && p < 1 ? 'nearly 10' : `about ${n}`;
+}
+
+/** Explains a spot with everyday words: "you'd win about 4 times out of 10…". */
+export function plainEnglish(ctx: DecisionContext, rec: Recommendation): string {
+  const eq = realisticEquity(ctx);
+  const parts: string[] = [];
+  if (ctx.street === 'preflop') {
+    parts.push(
+      `Before any shared cards are dealt, ${ctx.start.notation} is a ${ctx.start.tier.toLowerCase()} starting hand. Against ${ctx.opponents} other player${ctx.opponents > 1 ? 's' : ''} it ends up the best hand ${outOfTen(ctx.equity.equity)} times out of 10.`,
+    );
+  } else {
+    parts.push(`If this hand were played to the end many times, you would win ${outOfTen(eq)} times out of 10.`);
+  }
+  if (ctx.toCall > 0) {
+    const need = requiredEquity(ctx.toCall, ctx.pot);
+    parts.push(`Calling costs ${ctx.toCall} to win a pot of ${ctx.pot + ctx.toCall}, so it pays off if you win more than ${outOfTen(need)} times out of 10.`);
+    parts.push(eq >= need ? 'You win more often than that, so staying in makes money over time.' : 'You win less often than that, so calling loses money over time and folding saves chips.');
+  } else if (rec.move === 'bet' || rec.move === 'raise') {
+    parts.push('Your hand is strong, so betting makes players with weaker hands pay to stay in.');
+  } else if (rec.move === 'check') {
+    parts.push(ctx.street === 'river' ? 'Your hand is not strong enough to bet: only better hands would pay you now.' : 'Your hand is not strong enough to bet, and checking lets you see the next card for free.');
+  }
+  return parts.join(' ');
 }
 
 const normalise = (action: ActionType): Move => action;
@@ -218,7 +249,7 @@ export function evaluateDecision(ctx: DecisionContext, action: ActionType, amoun
         ? `A ${move} is fine here, though ${rec.move} is slightly better. ${rec.why}`
         : `Better was to ${rec.move}. ${rec.why}`;
 
-  return { verdict, headline, recommendation: rec, points };
+  return { verdict, headline, recommendation: rec, points, simple: plainEnglish(ctx, rec) };
 }
 
 const value = (ctx: DecisionContext) => valueLine(ctx.opponents);
@@ -232,8 +263,8 @@ export type ReasonTag = 'value' | 'bluff' | 'draw' | 'odds' | 'scared' | 'cheap'
 export const REASON_OPTIONS: { tag: ReasonTag; label: string }[] = [
   { tag: 'value', label: 'I think I have the best hand' },
   { tag: 'bluff', label: 'Bluffing — trying to make them fold' },
-  { tag: 'draw', label: "I'm drawing to a better hand" },
-  { tag: 'odds', label: 'The pot odds were right' },
+  { tag: 'draw', label: "I'm hoping the next card improves my hand" },
+  { tag: 'odds', label: 'The price to call was worth it (pot odds)' },
   { tag: 'scared', label: 'Worried someone has me beat' },
   { tag: 'cheap', label: 'It was cheap to see another card' },
   { tag: 'gut', label: 'Gut feeling' },
@@ -279,9 +310,9 @@ export function respondToReason(ctx: DecisionContext, action: ActionType, tags: 
         else if (ctx.outs && ctx.outs.total >= 6) replies.push(`A bluff with ${ctx.outs.total} outs is a semi-bluff — the best kind, since you can still win if called.`);
         else if (ctx.opponents === 1)
           replies.push(
-            `Heads-up is the right place to bluff, but the story has to make sense. If you only called the earlier streets, you look like a missed draw — and a player who called with a pair rarely folds it.`,
+            `Heads-up is the right place to bluff, but the story has to make sense. If you only called in the earlier rounds, you look like a missed draw — and a player who called with a pair rarely folds it.`,
           );
-        else replies.push(`Pure bluffs work best heads-up, on scary boards, and with a story that makes sense from earlier streets.`);
+        else replies.push(`Pure bluffs work best heads-up, on scary boards, and with a story that makes sense from earlier rounds.`);
         if (!strong && amountTo !== undefined && amountTo > 0 && ctx.toCall === 0) {
           replies.push(`The maths of a bluff: risking ${amountTo} to win ${ctx.pot} needs them to fold ${pct(bluffBreakeven(amountTo, ctx.pot))} of the time. Ask yourself whether they really fold that often.`);
         }

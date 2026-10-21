@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { type Card, FULL_DECK, RANK_CHARS, SUIT_SYMBOLS, isRed, parseCards, rankOf, suitOf } from '../engine/cards';
 import { buildContext } from '../engine/coach';
 import { type ActionType, STREETS, STREET_LABELS, type Street } from '../engine/game';
-import { type Decision, type HandReview, resolveShowdown, reviewHand } from '../engine/review';
+import { type Decision, type HandReview, type ReportedResult, resolveShowdown, reviewHand } from '../engine/review';
 import { PlayingCard } from './PlayingCard';
 
 interface StreetDraft {
@@ -19,6 +19,8 @@ interface Draft {
   board: (Card | null)[];
   opponents: number;
   stack: number;
+  /** What happened at the real table, so the coach can check it. */
+  reported: ReportedResult;
   streets: Record<Street, StreetDraft>;
 }
 
@@ -30,6 +32,7 @@ const EMPTY: Draft = {
   board: [null, null, null, null, null],
   opponents: 1,
   stack: 100,
+  reported: 'unknown',
   streets: { preflop: emptyStreet(1.5, 1), flop: emptyStreet(), turn: emptyStreet(), river: emptyStreet() },
 };
 
@@ -42,11 +45,31 @@ function exampleDraft(): Draft {
     board: c('Qh 8c 3h 2s Kc'),
     opponents: 1,
     stack: 100,
+    reported: 'lost',
     streets: {
       preflop: { action: 'call', pot: 4.5, toCall: 2, amount: 0, note: 'Suited connectors, and it was cheap to see a flop.' },
       flop: { action: 'call', pot: 10.5, toCall: 4, amount: 0, note: 'I had a flush draw and a gutshot.' },
       turn: { action: 'call', pot: 24.5, toCall: 10, amount: 0, note: "Still drawing — I didn't want to give up on my flush." },
       river: { action: 'bet', pot: 34.5, toCall: 0, amount: 30, note: 'I missed, so I bluffed to make them fold their queen.' },
+    },
+  };
+}
+
+/** Who should have won? A straight vs a pair, reported as a loss, to show the showdown check. */
+function showdownExample(): Draft {
+  const c = (s: string) => parseCards(s);
+  return {
+    hole: c('Ah Kd'),
+    villain: c('Qc 3c'),
+    board: c('9d 6d Jc Ts Qs'),
+    opponents: 1,
+    stack: 100,
+    reported: 'lost',
+    streets: {
+      preflop: { action: 'raise', pot: 1.5, toCall: 1, amount: 3, note: 'Ace-King is one of the best starting hands.' },
+      flop: { action: 'call', pot: 10.5, toCall: 4, amount: 0, note: 'Two big cards and a backdoor straight chance.' },
+      turn: { action: 'check', pot: 14.5, toCall: 0, amount: 0, note: 'I had nothing yet, so I checked.' },
+      river: { action: 'call', pot: 24.5, toCall: 10, amount: 0, note: 'I made a straight with the Queen.' },
     },
   };
 }
@@ -146,7 +169,7 @@ export function ReviewBuilder({ onAnalyse, iterations }: Props) {
       });
     }
     if (decisions.length === 0) return setError('Record at least one action (e.g. what you did pre-flop).');
-    onAnalyse(reviewHand(decisions, resolveShowdown(hole, board, villainCards.length === 2 ? [villainCards] : [])));
+    onAnalyse(reviewHand(decisions, resolveShowdown(hole, board, villainCards.length === 2 ? [villainCards] : [], draft.reported)));
   };
 
   const slot = (id: SlotId) => {
@@ -169,7 +192,10 @@ export function ReviewBuilder({ onAnalyse, iterations }: Props) {
         Recreate a hand
         <span style={{ display: 'flex', gap: 6 }}>
           <button className="chip-btn" onClick={() => { setDraft(exampleDraft()); setActive(null); }}>
-            Load example
+            Example: bluff
+          </button>
+          <button className="chip-btn" onClick={() => { setDraft(showdownExample()); setActive(null); }}>
+            Example: who won?
           </button>
           <button className="chip-btn" onClick={() => { setDraft(EMPTY); setActive('hole-0'); setError(''); }}>
             Clear
@@ -177,7 +203,7 @@ export function ReviewBuilder({ onAnalyse, iterations }: Props) {
         </span>
       </h2>
       <p className="small muted" style={{ marginTop: 0 }}>
-        Pick a slot, then a card. Record what you did on each street and why — the coach will walk through your logic and show what beat you.
+        Pick a slot, then a card. Record what you did in each betting round and why — the coach will walk through your logic and show what beat you.
       </p>
 
       <div className="slot-groups">
@@ -190,7 +216,7 @@ export function ReviewBuilder({ onAnalyse, iterations }: Props) {
           <div className="slots">{(['board-0', 'board-1', 'board-2', 'board-3', 'board-4'] as SlotId[]).map(slot)}</div>
         </div>
         <div className="slot-group">
-          <span className="label">What beat you (optional)</span>
+          <span className="label">Opponent's cards (optional)</span>
           <div className="slots">{(['villain-0', 'villain-1'] as SlotId[]).map(slot)}</div>
         </div>
       </div>
@@ -244,13 +270,19 @@ export function ReviewBuilder({ onAnalyse, iterations }: Props) {
           Your stack (big blinds)
           <input type="number" min={1} step={1} value={draft.stack} onChange={(e) => setDraft((d) => ({ ...d, stack: Number(e.target.value) }))} />
         </label>
-        <div className="field">
-          Amounts
-          <span className="small" style={{ color: 'var(--ink-2)', paddingTop: 8 }}>
-            All chip amounts are in big blinds.
-          </span>
-        </div>
+        <label className="field">
+          Result at the table
+          <select value={draft.reported} onChange={(e) => setDraft((d) => ({ ...d, reported: e.target.value as ReportedResult }))}>
+            <option value="unknown">Not sure / didn't see</option>
+            <option value="won">I won</option>
+            <option value="lost">I lost</option>
+            <option value="split">We split the pot</option>
+          </select>
+        </label>
       </div>
+      <p className="small muted" style={{ margin: '8px 0 0' }}>
+        All chip amounts are in big blinds. With the full board and the opponent's cards, the coach checks who <i>should</i> have won.
+      </p>
 
       <div className="street-rows">
         {STREETS.map((s) => {

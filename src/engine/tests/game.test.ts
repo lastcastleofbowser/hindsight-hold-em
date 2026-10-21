@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { seededRng } from './cards';
-import { decideBotAction } from './bots';
-import { type BotStyle, applyAction, legalActions, netResult, newHand, potSize } from './game';
+import { seededRng } from '../cards';
+import { decideBotAction } from '../bots';
+import { type BotStyle, applyAction, legalActions, netResult, newHand, potSize } from '../game';
 
 const STYLES: BotStyle[] = ['tight', 'balanced', 'loose', 'aggressive'];
 

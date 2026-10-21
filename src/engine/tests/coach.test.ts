@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { parseCards, seededRng } from './cards';
-import { bettingRange, calculateEquity, countOuts } from './analysis';
-import { buildContext, evaluateDecision, inferReasons, recommend, respondToReason } from './coach';
-import { offlineReply } from './chat';
-import { reviewHand, resolveShowdown } from './review';
-import type { Street } from './game';
+import { parseCards, seededRng } from '../cards';
+import { bettingRange, calculateEquity, countOuts } from '../analysis';
+import { buildContext, evaluateDecision, inferReasons, recommend, respondToReason } from '../coach';
+import { offlineReply } from '../chat';
+import { reviewHand, resolveShowdown } from '../review';
+import type { Street } from '../game';
 
 const ctx = (street: Street, hole: string, board: string, pot: number, toCall: number, opponents = 1) =>
   buildContext({ street, hole: parseCards(hole), board: board ? parseCards(board) : [], opponents, pot, toCall, bigBlind: 1, heroStack: 100, iterations: 6000 });

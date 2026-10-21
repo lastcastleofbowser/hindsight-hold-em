@@ -11,14 +11,17 @@ import type Anthropic from '@anthropic-ai/sdk';
 
 export const CLAUDE_MODEL = 'claude-opus-5-5';
 
-const SYSTEM_PROMPT = `You are the coach inside Hindsight Hold'em, a No-Limit Texas Hold'em training app.
+const SYSTEM_PROMPT = `You are the coach inside Hindsight Hold'em, a No-Limit Texas Hold'em training app (Texas Hold'em only — two hole cards, five community cards, best five of seven).
 The player recreated a hand they played and explained their reasoning. A poker engine has already computed the numbers (equity, pot odds, outs, the nuts, hindsight equity); they are given to you as HAND FACTS.
 
 How to coach:
 - Treat HAND FACTS as ground truth. Do not invent different percentages; if you estimate something the engine did not compute, say it's an estimate.
 - Judge each decision by what the player could know at the time, then use hindsight separately to explain the result. Call out results-oriented thinking when you see it.
+- If the HAND FACTS include a showdown, state clearly who should have won by the rules and why, and flag it if the player's reported result disagrees.
 - Respond directly to the player's stated reasoning and explain where the logic was sound or flawed.
 - Be encouraging but honest. Keep answers focused: short paragraphs or bullet points, plain language, define jargon the first time you use it.`;
+
+const BEGINNER_NOTE = `- This player is new to Texas Hold'em. Use everyday words, explain any poker term in a few words the first time (e.g. "equity — your chance of winning"), and give probabilities as "about 4 times out of 10" alongside percentages.`;
 
 export interface CoachTurn {
   role: 'user' | 'assistant';
@@ -38,6 +41,8 @@ export async function askClaude(opts: {
   apiKey: string;
   handFacts: string;
   history: CoachTurn[];
+  /** The player is new to poker: avoid jargon, define terms. */
+  beginner?: boolean;
   onText: (textSoFar: string) => void;
   signal?: AbortSignal;
 }): Promise<StreamResult> {
@@ -56,7 +61,7 @@ export async function askClaude(opts: {
       {
         model: CLAUDE_MODEL,
         max_tokens: 64000,
-        system: SYSTEM_PROMPT,
+        system: opts.beginner ? `${SYSTEM_PROMPT}\n${BEGINNER_NOTE}` : SYSTEM_PROMPT,
         output_config: { effort: 'medium' },
         betas: ['server-side-fallback-2026-07-01'],
         fallbacks: 'default',

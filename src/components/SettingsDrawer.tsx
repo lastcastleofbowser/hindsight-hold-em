@@ -80,6 +80,14 @@ export function SettingsDrawer({ settings, update, onClose }: Props) {
           Turn off to test your instincts — odds are still revealed in the hindsight review.
         </small>
 
+        <label className="toggle">
+          <input type="checkbox" checked={settings.beginnerMode} onChange={(e) => update({ beginnerMode: e.target.checked })} />
+          Beginner explanations
+        </label>
+        <small className="muted" style={{ marginTop: -10 }}>
+          Adds a plain-English version of every piece of coach feedback. Poker terms always show a definition on hover or tap.
+        </small>
+
         <div className="setting">
           <span>Simulation accuracy</span>
           <Seg

@@ -23,7 +23,7 @@ function path(points: Point[]) {
   return points.map((p, i) => `${i ? 'L' : 'M'}${x(STREETS.indexOf(p.street))},${y(p.equity)}`).join(' ');
 }
 
-/** How your chance of winning moved street by street. */
+/** How your chance of winning moved round by round. */
 export function EquityChart({ points, hindsight }: Props) {
   const [hover, setHover] = useState<number | null>(null);
   const showHs = !!hindsight && hindsight.length > 0;
@@ -32,7 +32,7 @@ export function EquityChart({ points, hindsight }: Props) {
 
   return (
     <div style={{ position: 'relative' }}>
-      <svg className="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Equity by street">
+      <svg className="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Win chance by round">
         <g className="grid">
           {[0, 0.25, 0.5, 0.75, 1].map((v) => (
             <line key={v} x1={PAD.l} x2={W - PAD.r} y1={y(v)} y2={y(v)} />

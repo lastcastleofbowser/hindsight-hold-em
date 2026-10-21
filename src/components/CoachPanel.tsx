@@ -5,12 +5,14 @@ import {
   type ReasonTag,
   REASON_OPTIONS,
   VERDICT_LABELS,
+  plainEnglish,
   recommend,
 } from '../engine/coach';
 import { STREET_LABELS } from '../engine/game';
 import type { Decision } from '../engine/review';
 import type { CoachState } from '../hooks/useGame';
 import type { CoachMode } from '../hooks/useSettings';
+import { TermText } from './Term';
 
 interface Props {
   mode: CoachMode;
@@ -18,13 +20,14 @@ interface Props {
   decisions: Decision[];
   heroContext: DecisionContext | null;
   holdTable: boolean;
+  beginner: boolean;
   onAnswer: (tags: ReasonTag[], note: string) => void;
   onResume: () => void;
 }
 
 const ACTION_VERBS: Record<string, string> = { fold: 'fold', check: 'check', call: 'call', bet: 'bet', raise: 'raise' };
 
-export function CoachPanel({ mode, coach, decisions, heroContext, holdTable, onAnswer, onResume }: Props) {
+export function CoachPanel({ mode, coach, decisions, heroContext, holdTable, beginner, onAnswer, onResume }: Props) {
   const [hint, setHint] = useState(false);
   useEffect(() => setHint(false), [heroContext]);
 
@@ -42,7 +45,7 @@ export function CoachPanel({ mode, coach, decisions, heroContext, holdTable, onA
         )}
       </h2>
 
-      {hint && heroContext && <HintCard ctx={heroContext} />}
+      {hint && heroContext && <HintCard ctx={heroContext} beginner={beginner} />}
 
       {coach?.awaitingWhy && decision ? (
         <WhyPrompt action={decision.action} street={STREET_LABELS[decision.ctx.street]} onAnswer={onAnswer} />
@@ -51,6 +54,7 @@ export function CoachPanel({ mode, coach, decisions, heroContext, holdTable, onA
           feedback={coach.feedback}
           replies={coach.replies}
           note={decision?.note ?? ''}
+          beginner={beginner}
           title={decision ? `${STREET_LABELS[decision.ctx.street]} — you ${decision.action}` : undefined}
         />
       ) : (
@@ -74,11 +78,12 @@ export function CoachPanel({ mode, coach, decisions, heroContext, holdTable, onA
   );
 }
 
-function HintCard({ ctx }: { ctx: DecisionContext }) {
+function HintCard({ ctx, beginner }: { ctx: DecisionContext; beginner: boolean }) {
   const rec = recommend(ctx);
   return (
     <div className="reply" style={{ marginTop: 0, marginBottom: 10 }}>
-      <b>Coach would {rec.move}.</b> {rec.why}
+      <b>Coach would {rec.move}.</b> <TermText text={rec.why} />
+      {beginner && <p className="plain">💡 {plainEnglish(ctx, rec)}</p>}
     </div>
   );
 }
@@ -126,17 +131,34 @@ function WhyPrompt({ action, street, onAnswer }: { action: string; street: strin
   );
 }
 
-export function FeedbackCard({ feedback, replies, note, title }: { feedback: CoachFeedback; replies: string[]; note: string; title?: string }) {
+export function FeedbackCard({
+  feedback,
+  replies,
+  note,
+  title,
+  beginner,
+}: {
+  feedback: CoachFeedback;
+  replies: string[];
+  note: string;
+  title?: string;
+  beginner: boolean;
+}) {
   return (
     <div className="coach-card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
         <span className={`verdict ${feedback.verdict}`}>{VERDICT_LABELS[feedback.verdict]}</span>
         {title && <span className="small muted">{title}</span>}
       </div>
-      <p className="feedback-headline">{feedback.headline}</p>
+      <p className="feedback-headline">
+        <TermText text={feedback.headline} />
+      </p>
+      {beginner && <p className="plain">💡 In plain English: {feedback.simple}</p>}
       <ul className="points">
         {feedback.points.map((p) => (
-          <li key={p}>{p}</li>
+          <li key={p}>
+            <TermText text={p} />
+          </li>
         ))}
       </ul>
       {replies.length > 0 && (
@@ -148,7 +170,7 @@ export function FeedbackCard({ feedback, replies, note, title }: { feedback: Coa
           )}
           {replies.map((r) => (
             <p key={r} style={{ margin: '0 0 6px' }}>
-              {r}
+              <TermText text={r} />
             </p>
           ))}
         </div>

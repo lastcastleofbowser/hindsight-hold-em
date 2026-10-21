@@ -25,7 +25,7 @@ import {
   newHand,
   potSize,
 } from '../engine/game';
-import { type Decision, type HandReview, type Showdown, reviewHand } from '../engine/review';
+import { type Decision, type HandReview, resolveShowdown, reviewHand } from '../engine/review';
 import { BOT_DELAY_MS, ITERATIONS, type Settings } from './useSettings';
 
 export const BIG_BLIND = 10;
@@ -212,19 +212,16 @@ export function useGame(settings: Settings) {
   // End-of-hand review: grade decisions and compute hindsight equity.
   const review: HandReview | null = useMemo(() => {
     if (!game?.finished || !hero) return null;
-    let showdown: Showdown | null = null;
-    const heroResult = game.results[hero.id];
-    if (game.showdown && heroResult) {
-      const villains = activePlayers(game)
-        .filter((p) => !p.isHero)
-        .map((p) => ({ hole: p.hole, hand: game.results[p.id] }));
-      const best = Math.max(...villains.map((v) => v.hand.score));
-      showdown = {
-        hero: heroResult,
-        villains,
-        outcome: heroResult.score > best ? 'won' : heroResult.score === best ? 'split' : 'lost',
-      };
-    }
+    const showdown =
+      game.showdown && game.results[hero.id]
+        ? resolveShowdown(
+            hero.hole,
+            game.board,
+            activePlayers(game)
+              .filter((p) => !p.isHero)
+              .map((p) => p.hole),
+          )
+        : null;
     return reviewHand(decisions, showdown);
   }, [game?.finished, game?.handNumber, decisions]);
 

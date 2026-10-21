@@ -14,6 +14,8 @@ export enum Category {
   FullHouse = 6,
   Quads = 7,
   StraightFlush = 8,
+  /** A-K-Q-J-10 of one suit: the best possible Texas Hold'em hand. */
+  RoyalFlush = 9,
 }
 
 export const CATEGORY_NAMES = [
@@ -26,7 +28,10 @@ export const CATEGORY_NAMES = [
   'Full House',
   'Four of a Kind',
   'Straight Flush',
+  'Royal Flush',
 ];
+
+export const CATEGORY_COUNT = CATEGORY_NAMES.length;
 
 // Scratch buffers reused across calls: the evaluator runs hundreds of
 // thousands of times per simulation, so avoiding allocation matters.
@@ -82,6 +87,7 @@ export function evaluate(cards: ArrayLike<Card>, n: number = cards.length): numb
   for (let s = 0; s < 4; s++) {
     if (suitCounts[s] >= 5) {
       const top = straightTop(suitMasks[s]);
+      if (top === 12) return (Category.RoyalFlush << 20) | (top << 16);
       if (top >= 0) return (Category.StraightFlush << 20) | (top << 16);
       return (Category.Flush << 20) | packTop(suitMasks[s], 5);
     }
@@ -140,8 +146,10 @@ export function describeScore(score: number): string {
   const a = slot(score, 0);
   const b = slot(score, 1);
   switch (cat) {
+    case Category.RoyalFlush:
+      return 'Royal Flush';
     case Category.StraightFlush:
-      return a === 12 ? 'Royal Flush' : `Straight Flush, ${RANK_NAMES[a]} high`;
+      return `Straight Flush, ${RANK_NAMES[a]} high`;
     case Category.Quads:
       return `Four of a Kind, ${RANK_PLURALS[a]}`;
     case Category.FullHouse:

@@ -1,6 +1,7 @@
 import { type Card, cardsLabel } from './cards';
-import { calculateEquity, pct } from './analysis';
+import { type ThreatGroup, analyseThreats, calculateEquity, pct } from './analysis';
 import { evaluateHand, type HandResult } from './evaluator';
+import { explainComparison } from './explain';
 import {
   type CoachFeedback,
   type DecisionContext,
@@ -32,10 +33,22 @@ export interface DecisionReview {
   hindsightEquity: number | null;
 }
 
+export type Outcome = 'won' | 'lost' | 'split';
+/** What the player says happened at the table ("unknown" if they didn't say). */
+export type ReportedResult = Outcome | 'unknown';
+
 export interface Showdown {
   hero: HandResult;
   villains: { hole: Card[]; hand: HandResult }[];
-  outcome: 'won' | 'lost' | 'split';
+  /** The result according to the rules of Texas Hold'em. */
+  outcome: Outcome;
+  /** Plain-English reason for the outcome (hero vs the strongest opponent). */
+  explanation: string;
+  /** Hand types that would have beaten hero on this board, strongest first. */
+  beatenBy: ThreatGroup[];
+  reported: ReportedResult;
+  /** The reported result disagrees with what the cards say. */
+  mismatch: boolean;
 }
 
 export interface HandReview {
@@ -66,15 +79,30 @@ export function reviewDecision(d: Decision): DecisionReview {
   return { decision: d, feedback, reasonReplies, hindsightEquity };
 }
 
-export function resolveShowdown(hole: Card[], board: Card[], villains: Card[][]): Showdown | null {
+/**
+ * Works out who should win by the rules, explains why, and checks the
+ * player's reported result against it.
+ */
+export function resolveShowdown(hole: Card[], board: Card[], villains: Card[][], reported: ReportedResult = 'unknown'): Showdown | null {
   const known = villains.filter((h) => h.length === 2);
   if (board.length < 5 || known.length === 0) return null;
   const hero = evaluateHand([...hole, ...board]);
   const vs = known.map((h) => ({ hole: h, hand: evaluateHand([...h, ...board]) }));
-  const best = Math.max(...vs.map((v) => v.hand.score));
-  const outcome = hero.score > best ? 'won' : hero.score === best ? 'split' : 'lost';
-  return { hero, villains: vs, outcome };
+  const top = vs.reduce((a, b) => (b.hand.score > a.hand.score ? b : a));
+  const outcome: Outcome = hero.score > top.hand.score ? 'won' : hero.score === top.hand.score ? 'split' : 'lost';
+  return {
+    hero,
+    villains: vs,
+    outcome,
+    explanation: explainComparison({ label: 'You', hand: hero }, { label: 'Your opponent', hand: top.hand }),
+    beatenBy: analyseThreats(hole, board, 1)?.byCategory ?? [],
+    reported,
+    mismatch: reported !== 'unknown' && reported !== outcome,
+  };
 }
+
+const OUTCOME_WORDS: Record<Outcome, string> = { won: 'won', lost: 'lost', split: 'split the pot' };
+export const outcomeWords = (o: Outcome) => OUTCOME_WORDS[o];
 
 export function reviewHand(decisions: Decision[], showdown: Showdown | null): HandReview {
   const reviews = decisions.map(reviewDecision);
@@ -84,16 +112,22 @@ export function reviewHand(decisions: Decision[], showdown: Showdown | null): Ha
   );
 
   const summary: string[] = [];
+  // A result that contradicts the rules matters more than anything else.
+  if (showdown?.mismatch) {
+    summary.push(
+      `⚠️ You said you ${OUTCOME_WORDS[showdown.reported as Outcome]}, but by the rules you should have ${OUTCOME_WORDS[showdown.outcome]} — see the showdown check.`,
+    );
+  }
   const good = reviews.filter((r) => VERDICT_RANK[r.feedback.verdict] <= 1).length;
   if (reviews.length) summary.push(`${good} of ${reviews.length} decision${reviews.length > 1 ? 's' : ''} matched or were close to the recommended play.`);
 
   if (showdown) {
     const top = showdown.villains.reduce((a, b) => (b.hand.score > a.hand.score ? b : a));
     if (showdown.outcome === 'lost') {
-      summary.push(`You lost with ${showdown.hero.name} to ${cardsLabel(top.hole)} making ${top.hand.name}.`);
+      summary.push(`By the rules you lose this hand: ${showdown.hero.name} vs ${cardsLabel(top.hole)} making ${top.hand.name}.`);
     } else if (showdown.outcome === 'won') {
-      summary.push(`You won with ${showdown.hero.name} against ${top.hand.name}.`);
-    } else summary.push(`The pot was split — both made ${showdown.hero.name}.`);
+      summary.push(`By the rules you win this hand: ${showdown.hero.name} beats ${top.hand.name}.`);
+    } else summary.push(`By the rules the pot is split — both make ${showdown.hero.name}.`);
   }
 
   const luckSwing = reviews.find((r) => r.hindsightEquity !== null && r.hindsightEquity >= 0.6);

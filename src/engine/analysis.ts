@@ -1,5 +1,5 @@
 import { type Card, rankOf, suitOf, remainingDeck, RANK_CHARS } from './cards';
-import { Category, CATEGORY_NAMES, evaluate, evaluateHand, describeScore, categoryOf, type HandResult } from './evaluator';
+import { Category, CATEGORY_COUNT, CATEGORY_NAMES, evaluate, evaluateHand, describeScore, categoryOf, type HandResult } from './evaluator';
 
 // ---------------------------------------------------------------------------
 // Equity
@@ -57,7 +57,7 @@ export function calculateEquity(input: EquityInput): EquityResult {
   const dead = [...hero, ...board, ...knownHands.flat()];
   const deck = remainingDeck(dead);
   const missingBoard = 5 - board.length;
-  const categoryCounts = new Array(9).fill(0);
+  const categoryCounts = new Array(CATEGORY_COUNT).fill(0);
 
   const heroCards = new Int32Array(7);
   const oppCards = new Int32Array(7);

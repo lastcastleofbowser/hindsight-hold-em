@@ -7,6 +7,7 @@ import { CoachPanel } from './CoachPanel';
 import { HandSummary } from './HandSummary';
 import { OddsPanel } from './OddsPanel';
 import { PokerTable } from './PokerTable';
+import { TermText } from './Term';
 
 interface Props {
   settings: Settings;
@@ -25,8 +26,8 @@ export function PlayView({ settings, onDiscuss }: Props) {
       <div className="panel welcome">
         <h1>Hindsight Hold'em</h1>
         <p>
-          Play No-Limit Texas Hold'em against bots with live win probabilities. After every move the coach asks <i>why</i> — then shows where your logic held up, and
-          what the cards really were.
+          Play No-Limit <TermText text="Texas Hold'em" /> against bots with live win chances. After every move the coach asks <i>why</i> — then shows where your
+          logic held up, and what the cards really were. New to the game? Start with the <b>Learn</b> tab, and hover over any dotted-underlined word for a definition.
         </p>
         <button className="btn primary" onClick={g.dealNext}>
           Deal me in
@@ -63,7 +64,7 @@ export function PlayView({ settings, onDiscuss }: Props) {
         <PokerTable game={game} heroHandName={showOdds ? analysis?.threats?.hero.name : undefined} />
 
         {game.finished && review ? (
-          <HandSummary game={game} review={review} onNext={g.dealNext} onDiscuss={() => onDiscuss(review, game.handNumber)} />
+          <HandSummary game={game} review={review} beginner={settings.beginnerMode} onNext={g.dealNext} onDiscuss={() => onDiscuss(review, game.handNumber)} />
         ) : g.heroToAct && !g.holdTable ? (
           <ActionBar game={game} onAction={g.heroAct} />
         ) : (
@@ -82,6 +83,7 @@ export function PlayView({ settings, onDiscuss }: Props) {
           decisions={g.decisions}
           heroContext={g.holdTable ? null : g.heroContext}
           holdTable={g.holdTable}
+          beginner={settings.beginnerMode}
           onAnswer={g.answerWhy}
           onResume={g.resume}
         />

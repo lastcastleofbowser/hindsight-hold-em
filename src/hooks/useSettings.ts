@@ -11,6 +11,8 @@ export interface Settings {
   /** ask = pause and ask "why?" after every action; feedback = grade silently; off = no coach. */
   coachMode: CoachMode;
   showOdds: boolean;
+  /** Plain-English explanations alongside the coach's numbers. */
+  beginnerMode: boolean;
   accuracy: Accuracy;
   speed: Speed;
   claudeEnabled: boolean;
@@ -22,6 +24,7 @@ export const DEFAULT_SETTINGS: Settings = {
   botStyle: 'mixed',
   coachMode: 'ask',
   showOdds: true,
+  beginnerMode: true,
   accuracy: 'standard',
   speed: 'normal',
   claudeEnabled: false,

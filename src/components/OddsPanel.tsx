@@ -4,6 +4,7 @@ import { fairShare } from '../engine/coach';
 import type { Street } from '../engine/game';
 import { EquityChart } from './EquityChart';
 import { MiniCards } from './PlayingCard';
+import { G } from './Term';
 
 export interface HandAnalysis {
   equity: EquityResult;
@@ -36,7 +37,7 @@ export function OddsPanel({ analysis, toCall, pot, timeline, hindsight, heroFold
       )}
       {(timeline.length > 0 || hindsight.length > 0) && (
         <div className="section">
-          <h3>Equity by street</h3>
+          <h3>Win chance by round</h3>
           <EquityChart points={timeline} hindsight={hindsight} />
         </div>
       )}
@@ -59,7 +60,9 @@ function AnalysisBody({ analysis, toCall, pot }: { analysis: HandAnalysis; toCal
     <>
       <div className="equity-hero">
         <span className="big">{pct(equity.equity)}</span>
-        <span className="muted small">chance to win the pot{equity.exact ? '' : ` · ${equity.iterations.toLocaleString()} simulations`}</span>
+        <span className="muted small">
+          chance to win the pot (<G term="Equity">equity</G>){equity.exact ? '' : ` · ${equity.iterations.toLocaleString()} simulated deals`}
+        </span>
       </div>
       <div className="meter" aria-hidden>
         <span style={{ width: pct(equity.equity, 1) }} />
@@ -71,11 +74,15 @@ function AnalysisBody({ analysis, toCall, pot }: { analysis: HandAnalysis; toCal
         <dd>
           {pct(equity.win)} / {pct(equity.tie)}
         </dd>
-        <dt>Even share with {opponents + 1} players</dt>
+        <dt>
+          <G term="Even share">Even share</G> with {opponents + 1} players
+        </dt>
         <dd>{pct(fs)}</dd>
         {toCall > 0 && (
           <>
-            <dt>Needed to call {toCall} (pot odds)</dt>
+            <dt>
+              Needed to call {toCall} (<G term="Pot odds">pot odds</G>)
+            </dt>
             <dd style={{ color: equity.equity >= need ? 'var(--great)' : 'var(--mistake)' }}>{pct(need)}</dd>
           </>
         )}
@@ -86,7 +93,9 @@ function AnalysisBody({ analysis, toCall, pot }: { analysis: HandAnalysis; toCal
           <h3>Starting hand</h3>
           <div>
             <b>{start.notation}</b> <span className={`tier ${start.tier}`}>{start.tier}</span>{' '}
-            <span className="muted small">Chen score {start.chen}</span>
+            <span className="muted small">
+              <G term="Chen score">Chen score</G> {start.chen}
+            </span>
           </div>
         </div>
       )}
@@ -96,14 +105,20 @@ function AnalysisBody({ analysis, toCall, pot }: { analysis: HandAnalysis; toCal
           <h3>Right now</h3>
           <div>
             You have <b>{threats.hero.name}</b>
-            {heroHasNuts && <span className="verdict great" style={{ marginLeft: 8 }}>The nuts!</span>}
+            {heroHasNuts && (
+              <span className="verdict great" style={{ marginLeft: 8 }}>
+                <G term="The nuts">The nuts!</G>
+              </span>
+            )}
           </div>
           <dl className="kv">
             <dt>Chance someone has you beat</dt>
             <dd style={{ color: threats.pBeatAny > 0.5 ? 'var(--mistake)' : threats.pBeatAny > 0.25 ? 'var(--questionable)' : 'var(--great)' }}>
               {pct(threats.pBeatAny)}
             </dd>
-            <dt>Hands that beat you (of {threats.totalCombos})</dt>
+            <dt>
+              Hands that beat you (of {threats.totalCombos} <G term="Combos">combos</G>)
+            </dt>
             <dd>{threats.beatCombos} combos</dd>
           </dl>
           {threats.byCategory.length > 0 && (
@@ -121,7 +136,7 @@ function AnalysisBody({ analysis, toCall, pot }: { analysis: HandAnalysis; toCal
           )}
           {nuts && !heroHasNuts && (
             <p className="small muted" style={{ marginBottom: 0 }}>
-              Best possible hand: <b style={{ color: 'var(--ink)' }}>{nuts.name}</b> (e.g. <MiniCards cards={nuts.example} />)
+              Best possible hand (<G term="The nuts">the nuts</G>): <b style={{ color: 'var(--ink)' }}>{nuts.name}</b> (e.g. <MiniCards cards={nuts.example} />)
             </p>
           )}
         </div>
@@ -130,7 +145,7 @@ function AnalysisBody({ analysis, toCall, pot }: { analysis: HandAnalysis; toCal
       {outs && outs.total > 0 && (
         <div className="section">
           <h3>
-            Outs: {outs.total} · {pct(outs.hitNextCard)} next card{outs.hitByRiver !== outs.hitNextCard ? ` · ${pct(outs.hitByRiver)} by river` : ''}
+            <G term="Outs">Outs</G>: {outs.total} · {pct(outs.hitNextCard)} next card{outs.hitByRiver !== outs.hitNextCard ? ` · ${pct(outs.hitByRiver)} by river` : ''}
           </h3>
           {outs.groups.map((g) => (
             <div key={g.category} className="small" style={{ marginBottom: 4 }}>

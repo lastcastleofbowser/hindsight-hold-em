@@ -18,13 +18,14 @@ interface Props {
   origin: string;
   claudeReady: boolean;
   apiKey: string;
+  beginner: boolean;
 }
 
-const SUGGESTIONS = ['What should I have done on the turn?', 'How many outs did I have?', 'Explain the pot odds', 'Why did I lose?'];
+const SUGGESTIONS = ['Who should have won?', 'What should I have done on the turn?', 'How many outs did I have?', 'Explain the pot odds'];
 
 let nextId = 1;
 
-export function ReviewChat({ review, origin, claudeReady, apiKey }: Props) {
+export function ReviewChat({ review, origin, claudeReady, apiKey, beginner }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -36,8 +37,8 @@ export function ReviewChat({ review, origin, claudeReady, apiKey }: Props) {
   useEffect(() => {
     abort.current?.abort();
     claudeTurns.current = [];
-    setMessages(review ? walkthrough(review).map((text) => ({ id: nextId++, role: 'coach', text, source: 'offline' })) : []);
-  }, [review]);
+    setMessages(review ? walkthrough(review, { beginner }).map((text) => ({ id: nextId++, role: 'coach', text, source: 'offline' })) : []);
+  }, [review, beginner]);
 
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: 'smooth' });
@@ -50,7 +51,7 @@ export function ReviewChat({ review, origin, claudeReady, apiKey }: Props) {
     const userMsg: Message = { id: nextId++, role: 'user', text: q, source: 'offline' };
 
     if (!claudeReady) {
-      setMessages((m) => [...m, userMsg, { id: nextId++, role: 'coach', text: offlineReply(q, review), source: 'offline' }]);
+      setMessages((m) => [...m, userMsg, { id: nextId++, role: 'coach', text: offlineReply(q, review, { beginner }), source: 'offline' }]);
       return;
     }
 
@@ -64,6 +65,7 @@ export function ReviewChat({ review, origin, claudeReady, apiKey }: Props) {
       const result = await askClaude({
         apiKey,
         handFacts: handFacts(review),
+        beginner,
         history: turns,
         signal: controller.signal,
         onText: (text) => setMessages((m) => m.map((x) => (x.id === replyId ? { ...x, text } : x))),
@@ -74,7 +76,7 @@ export function ReviewChat({ review, origin, claudeReady, apiKey }: Props) {
       const reason = err instanceof CoachError ? err.message : "Couldn't reach Claude.";
       setMessages((m) =>
         m.map((x) =>
-          x.id === replyId ? { ...x, source: 'offline', pending: false, text: `*${reason} Here's the offline coach instead.*\n\n${offlineReply(q, review)}` } : x,
+          x.id === replyId ? { ...x, source: 'offline', pending: false, text: `*${reason} Here's the offline coach instead.*\n\n${offlineReply(q, review, { beginner })}` } : x,
         ),
       );
     } finally {
