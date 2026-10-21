@@ -1,6 +1,6 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { TOURS, type TourId } from '../content/tours';
+import { TOURS, type TourId, type TourStep } from '../content/tours';
 import { TermText } from './Term';
 
 /**
@@ -17,6 +17,12 @@ interface TourApi {
   request: (id: TourId) => void;
   /** Replay the most recently requested tour, even if seen. */
   replay: () => void;
+}
+
+interface ActiveTour {
+  id: TourId;
+  step: number;
+  steps: TourStep[];
 }
 
 const TourContext = createContext<TourApi>({ enabled: false, request: () => {}, replay: () => {} });
@@ -41,12 +47,15 @@ export function TourProvider({ enabled, onTurnOff, children }: { enabled: boolea
   const seen = useRef<Set<TourId>>(loadSeen());
   const queue = useRef<TourId[]>([]);
   const last = useRef<TourId | null>(null);
-  const [active, setActiveState] = useState<{ id: TourId; step: number } | null>(null);
+  const [active, setActiveState] = useState<ActiveTour | null>(null);
   // Mirror of `active` so callbacks can read it without side effects inside state updaters.
   const activeRef = useRef(active);
   const setActive = useCallback((next: { id: TourId; step: number } | null) => {
-    activeRef.current = next;
-    setActiveState(next);
+    // Only keep steps whose highlighted element is on screen now (untargeted steps always stay).
+    const resolved = next ? { ...next, steps: TOURS[next.id].filter((s) => !s.target || findTarget(s.target)) } : null;
+    const value = resolved && resolved.steps.length ? resolved : null;
+    activeRef.current = value;
+    setActiveState(value);
   }, []);
   const wasEnabled = useRef(enabled);
 
@@ -95,9 +104,13 @@ export function TourProvider({ enabled, onTurnOff, children }: { enabled: boolea
       {active && (
         <TourOverlay
           key={`${active.id}-${active.step}`}
-          id={active.id}
           step={active.step}
-          onStep={(step) => setActive({ id: active.id, step })}
+          steps={active.steps}
+          onStep={(step) => {
+            const next = { ...active, step };
+            activeRef.current = next;
+            setActiveState(next);
+          }}
           onFinish={finish}
           onTurnOff={() => {
             finish();
@@ -141,19 +154,18 @@ function findTarget(target?: string): HTMLElement | null {
 }
 
 function TourOverlay({
-  id,
+  steps,
   step,
   onStep,
   onFinish,
   onTurnOff,
 }: {
-  id: TourId;
+  steps: TourStep[];
   step: number;
   onStep: (n: number) => void;
   onFinish: () => void;
   onTurnOff: () => void;
 }) {
-  const steps = TOURS[id];
   const current = steps[step];
   const [rect, setRect] = useState<Rect | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);

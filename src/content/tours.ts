@@ -13,6 +13,7 @@ export interface TourStep {
 export type TourId =
   | 'play-intro'
   | 'play-decision'
+  | 'play-postflop'
   | 'play-why'
   | 'play-feedback'
   | 'play-summary'
@@ -22,12 +23,14 @@ export type TourId =
   | 'quiz'
   | 'quiz-flop'
   | 'learn'
+  | 'ranges'
+  | 'friends'
   | 'settings';
 
 export const TOURS: Record<TourId, TourStep[]> = {
   'play-intro': [
     { title: "Welcome to Hindsight Hold'em", body: "This quick tour shows you around. You can turn tutorial mode off any time in Settings, or skip a tour with the Skip button." },
-    { target: 'tabs', title: 'The five sections', body: 'Play & Train is the full table with live odds. Beginner is a calmer table where a coach talks you through every hand. Hand Review lets you rebuild a hand you played. Which Hand Wins? trains you to read hands. Learn has the rules, rankings and glossary.' },
+    { target: 'tabs', title: 'The sections', body: 'Play & Train is the full table with live odds. Beginner is a calmer table where a coach talks you through every hand. Hand Review rebuilds a hand you played. Which Hand Wins? trains hand reading. Ranges shows which hands to play from each seat. Friends lets you play the same hand with friends online. Learn has the rules, rankings and glossary.' },
     { target: 'deal-button', title: 'Start a hand', body: 'Press this to sit down at the table. The tour continues when it is your turn to act.' },
     { target: 'tour-button', title: 'Replay a tour', body: 'While tutorial mode is on, this button replays the tour for whatever you are looking at.' },
     { target: 'settings-button', title: 'Settings', body: 'Change the number of opponents, the coach style, tutorial mode and more. Remember to press Save.' },
@@ -43,10 +46,16 @@ export const TOURS: Record<TourId, TourStep[]> = {
     { target: 'equity', title: 'Your chance to win', body: 'This big percentage is your "equity": how often you would win the pot if the hand were played out many times against random hands. 40% means about 4 times in 10.' },
     { target: 'meter', title: 'The meter and its marks', body: 'The bar fills to your win chance. The white mark is an "even share" (50% against one player, 33% against two…). When someone has bet, an orange mark shows the win chance you need to make calling worthwhile.' },
     { target: 'odds-rows', title: 'Win, split and pot odds', body: '"Win outright / split" separates clean wins from ties. "Needed to call" is the pot odds: call ÷ (pot + call). If your win chance is above it, calling makes money in the long run.' },
-    { target: 'right-now', title: 'Right now', body: 'Your current hand, the chance someone already beats you, and which hand types (and how many card combinations) do. "Best possible hand" is the nuts on this board.' },
-    { target: 'outs', title: 'Outs', body: 'Unseen cards that would improve your hand, with the chance of hitting one on the next card and by the river.' },
+    { target: 'starting-hand', title: 'Starting hand', body: 'Before the flop, your two cards are rated from Premium to Weak. The Ranges tab shows exactly which hands to raise from each seat.' },
     { target: 'final-hand', title: 'Your final hand by the river', body: 'How likely you are to finish with each hand type once all five shared cards are out.' },
     { target: 'chart', title: 'Win chance by round', body: 'This graph tracks your win chance at each betting round: pre-flop, flop, turn, river. After the hand a dashed gold line appears showing your real chance against the cards opponents actually held — that is the "hindsight".' },
+  ],
+  'play-postflop': [
+    { target: 'board', title: 'The flop is out', body: 'Three shared cards. Everyone combines them with their own two cards — the odds panel has updated to match.' },
+    { target: 'right-now', title: 'Right now', body: 'Your current hand, the chance someone already beats you, and which hand types (and how many card combinations) do. "Best possible hand" is the nuts on this board.' },
+    { target: 'outs', title: 'Outs', body: 'Unseen cards that would improve your hand, with the chance of hitting one on the next card and by the river.' },
+    { target: 'reads', title: 'Reading the table', body: 'What each opponent\'s actions suggest they hold — a big bet usually means very strong or a bluff; checking usually means weak. Your win chance here is measured against those likely hands, not random cards.' },
+    { target: 'chart', title: 'The graph moves', body: 'A new point shows your win chance on the flop. Watch how it rises and falls as the turn and river arrive.' },
   ],
   'play-why': [
     { target: 'why-prompt', title: 'Why did you do that?', body: 'Pick one or more reasons, or type your own in plain words. The coach compares your reasoning with the numbers. Press Skip if you just want the grade.' },
@@ -61,6 +70,7 @@ export const TOURS: Record<TourId, TourStep[]> = {
   'play-summary': [
     { target: 'summary-result', title: 'Hand result', body: 'Chips won or lost this hand and who took the pot. Stacks reset each hand, so every hand is a fresh lesson.' },
     { target: 'showdown-check', title: 'Why this result?', body: 'When cards are shown, each player\'s best five cards are listed with the reason one hand beats the other.' },
+    { target: 'read-check', title: 'Read check', body: 'Were their bets honest? For every opponent who bet, see whether the bet meant a real hand, a draw (semi-bluff) or nothing at all (bluff).' },
     { target: 'hindsight-cards', title: 'Hindsight', body: 'Everyone\'s cards are revealed after the hand — including players who folded — so you can see what you were really up against.' },
     { target: 'decision-list', title: 'Your decisions', body: 'Each decision with its grade, your win chance at the time, and your hindsight win chance against their real cards.' },
     { target: 'chart', title: 'What you knew vs. hindsight', body: 'Solid blue: your win chance against random hands (what you could know). Dashed gold: against the cards they really held. Big gaps between the two are luck — judge yourself on the blue line.' },
@@ -91,6 +101,14 @@ export const TOURS: Record<TourId, TourStep[]> = {
   ],
   'quiz-flop': [
     { target: 'quiz-equity', title: 'Ahead now vs. winning later', body: 'These bars are each player\'s exact chance to win by the river, counted over every possible turn and river. The player behind can still win with their "outs" — compare the quick rule of 4 with the exact number.' },
+  ],
+  ranges: [
+    { target: 'range-chart', title: 'Pre-flop ranges', body: 'Pick a seat to see which starting hands to raise when everyone has folded to you. Green = raise, grey = fold (and blue = call for the big blind). Pairs run down the diagonal, suited hands above it, offsuit below.' },
+    { target: 'range-drill', title: 'Range drill', body: 'Get a seat and a hand, decide raise or fold, and see the chart. Your score and streak are saved.' },
+  ],
+  friends: [
+    { title: 'Play with friends', body: 'The only online part of the app. One person creates a table and sends the 6-character code; friends join with it. Everyone plays the same hand with the same flop, turn and river.' },
+    { target: 'friends-lobby', title: 'Create or join', body: 'Enter your name, then create a table or type the code a friend sent you.' },
   ],
   learn: [
     { target: 'learn-nav', title: 'Learn', body: 'Jump to the rules, the hand rankings, the equity and pot odds lesson with calculators, or the searchable glossary.' },

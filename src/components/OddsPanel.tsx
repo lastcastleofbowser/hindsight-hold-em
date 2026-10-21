@@ -4,7 +4,8 @@ import { fairShare } from '../engine/coach';
 import type { Street } from '../engine/game';
 import { EquityChart } from './EquityChart';
 import { MiniCards } from './PlayingCard';
-import { G } from './Term';
+import { G, TermText } from './Term';
+import type { OpponentRead } from '../engine/reads';
 
 export interface HandAnalysis {
   equity: EquityResult;
@@ -17,6 +18,9 @@ export interface HandAnalysis {
 
 interface Props {
   analysis: HandAnalysis | null;
+  /** Win chance against the hands opponents' actions suggest (live table only). */
+  readsEquity?: number;
+  reads?: OpponentRead[];
   toCall: number;
   pot: number;
   timeline: { street: Street; equity: number }[];
@@ -24,7 +28,7 @@ interface Props {
   heroFolded: boolean;
 }
 
-export function OddsPanel({ analysis, toCall, pot, timeline, hindsight, heroFolded }: Props) {
+export function OddsPanel({ analysis, readsEquity, reads, toCall, pot, timeline, hindsight, heroFolded }: Props) {
   return (
     <section className="panel" aria-label="Probabilities">
       <h2>
@@ -34,6 +38,25 @@ export function OddsPanel({ analysis, toCall, pot, timeline, hindsight, heroFold
         <p className="muted small">{heroFolded ? 'You folded this hand. The chart below still shows how your odds moved.' : 'Deal a hand to see live probabilities.'}</p>
       ) : (
         <AnalysisBody analysis={analysis} toCall={toCall} pot={pot} />
+      )}
+      {analysis && reads && reads.some((r) => r.steps.length > 0) && (
+        <div className="section" data-tour="reads">
+          <h3>Reading the table</h3>
+          {readsEquity !== undefined && (
+            <p className="small" style={{ marginTop: 0 }}>
+              Against the hands their actions suggest, you win about <b>{pct(readsEquity)}</b>.
+            </p>
+          )}
+          <ul className="points">
+            {reads
+              .filter((r) => r.steps.length > 0)
+              .map((r) => (
+                <li key={r.playerId}>
+                  <TermText text={r.summary} />
+                </li>
+              ))}
+          </ul>
+        </div>
       )}
       {(timeline.length > 0 || hindsight.length > 0) && (
         <div className="section" data-tour="chart">
@@ -89,7 +112,7 @@ function AnalysisBody({ analysis, toCall, pot }: { analysis: HandAnalysis; toCal
       </dl>
 
       {!threats && (
-        <div className="section">
+        <div className="section" data-tour="starting-hand">
           <h3>Starting hand</h3>
           <div>
             <b>{start.notation}</b> <span className={`tier ${start.tier}`}>{start.tier}</span>{' '}

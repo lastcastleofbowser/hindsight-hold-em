@@ -10,6 +10,8 @@ interface Props {
   heroHandName?: string;
   /** Show full position names ("Big blind") instead of abbreviations ("BB"). */
   longPositions?: boolean;
+  /** Label bots with their playing style (off for tables of real people). */
+  showStyles?: boolean;
 }
 
 /** Glossary entry that explains each position badge. */
@@ -29,7 +31,7 @@ function seatPosition(i: number, n: number, rx: number, ry: number) {
   return { left: `${50 + rx * Math.cos(angle)}%`, top: `${50 + ry * Math.sin(angle)}%` };
 }
 
-export function PokerTable({ game, heroHandName, longPositions }: Props) {
+export function PokerTable({ game, heroHandName, longPositions, showStyles = true }: Props) {
   const n = game.players.length;
   const pot = potSize(game);
   const winners = new Set(game.winners.map((w) => w.playerId));
@@ -111,7 +113,7 @@ export function PokerTable({ game, heroHandName, longPositions }: Props) {
                     </span>
                     <span className="stack">{p.stack}</span>
                   </div>
-                  {!p.isHero && <div className="style-tag">{BOT_STYLE_LABELS[p.style]}</div>}
+                  {!p.isHero && showStyles && <div className="style-tag">{BOT_STYLE_LABELS[p.style]}</div>}
                 </div>
                 <div className="seat-status">
                   {label ? (

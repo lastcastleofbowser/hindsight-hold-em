@@ -1,6 +1,6 @@
 import { type Card, RANK_NAMES, RANK_PLURALS, SUIT_NAMES, rankOf, suitOf } from './cards';
 import { requiredEquity } from './analysis';
-import { type DecisionContext, type Move, type Verdict, realisticEquity, recommend, valueLine } from './coach';
+import { type DecisionContext, type Move, type Verdict, bluffBreakeven, realisticEquity, recommend, valueLine } from './coach';
 import { Category } from './evaluator';
 import type { ActionType, Position } from './game';
 
@@ -116,6 +116,8 @@ function drawWords(ctx: DecisionContext): string | null {
 
 export interface BeginnerAdvice {
   move: Move;
+  /** Suggested bet size as a fraction of the pot, for bets and raises. */
+  size?: number;
   /** e.g. "I'd fold here." */
   headline: string;
   /** Short paragraphs, conversational, one idea each. */
@@ -135,12 +137,16 @@ export function beginnerAdvice(ctx: DecisionContext, position: Position, bettor?
     paragraphs.push(TIER_MEANING[ctx.start.tier]);
     paragraphs.push(POSITION_ADVICE[position](ctx.bigBlind));
     if (ctx.toCall > ctx.bigBlind) paragraphs.push(`${bettor ?? 'Someone'} has raised, which usually means a good hand — so you need a better hand than usual to continue.`);
+    if (ctx.position && (rec.kind === 'value' || rec.move === 'fold')) paragraphs.push(rec.why);
   } else {
     paragraphs.push(madeHandWords(ctx));
     paragraphs.push(...boardDangers(ctx));
     const draw = drawWords(ctx);
     if (draw) paragraphs.push(draw);
-    paragraphs.push(`All in all, you would win this hand ${timesInTen(eq)} against these players.`);
+    for (const read of (ctx.reads ?? []).filter((r) => r.steps.some((s) => s.street !== 'preflop'))) {
+      paragraphs.push(`Reading ${read.name}: ${read.summary}`);
+    }
+    paragraphs.push(`Overall, you would win this hand ${timesInTen(eq)} against the hands they are likely to have.`);
   }
 
   if (ctx.toCall > 0 && ctx.street !== 'preflop') {
@@ -149,6 +155,15 @@ export function beginnerAdvice(ctx: DecisionContext, position: Position, bettor?
       `${bettor ?? 'Someone'} bet. Calling costs ${ctx.toCall} to win ${ctx.pot + ctx.toCall}, so it's worth it if you win more than ${timesInTen(need)}. You win ${timesInTen(eq)}${
         eq >= need ? ' — enough.' : ' — not enough.'
       }`,
+    );
+  } else if (rec.kind === 'bluff') {
+    const bet = Math.round((rec.size ?? 0.5) * 100);
+    paragraphs.push(
+      `This is a good moment to bluff. Your opponent has kept checking, which usually means a weak hand. Your hand probably won't win if the cards are shown, so checking gives up the pot. A bet of about ${bet}% of the pot only needs them to fold ${timesInTen(bluffBreakeven(rec.size ?? 0.5, 1))} to make money — and weak hands fold more often than that.`,
+    );
+  } else if (rec.kind === 'c-bet') {
+    paragraphs.push(
+      'You raised before the flop and they checked to you. A small bet (about a third of the pot) — a "continuation bet" — tells the story that you still have a strong hand, and most of the time the flop missed them, so they fold.',
     );
   } else if (ctx.toCall === 0 && ctx.street !== 'preflop') {
     paragraphs.push(
@@ -160,7 +175,13 @@ export function beginnerAdvice(ctx: DecisionContext, position: Position, bettor?
     );
   }
 
-  return { move: rec.move, headline: `I'd ${VERB[rec.move]} here.`, paragraphs: paragraphs.filter(Boolean) };
+  const headline =
+    rec.kind === 'bluff'
+      ? `I'd bluff here — bet about ${Math.round((rec.size ?? 0.5) * 100)}% of the pot.`
+      : rec.kind === 'c-bet'
+        ? "I'd make a small continuation bet here."
+        : `I'd ${VERB[rec.move]} here.`;
+  return { move: rec.move, size: rec.size, headline, paragraphs: paragraphs.filter(Boolean) };
 }
 
 const PAST: Record<ActionType, string> = { fold: 'folded', check: 'checked', call: 'called', bet: 'bet', raise: 'raised' };

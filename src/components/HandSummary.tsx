@@ -2,6 +2,7 @@ import { pct } from '../engine/analysis';
 import { VERDICT_LABELS } from '../engine/coach';
 import { orderBest5 } from '../engine/explain';
 import { type GameState, STREET_LABELS, netResult } from '../engine/game';
+import type { ReadCheck } from '../engine/reads';
 import type { HandReview } from '../engine/review';
 import { MiniCards } from './PlayingCard';
 import { TermText } from './Term';
@@ -9,12 +10,14 @@ import { TermText } from './Term';
 interface Props {
   game: GameState;
   review: HandReview;
+  /** Did each opponent's bets mean what they seemed to? */
+  reveals: ReadCheck[];
   beginner: boolean;
   onNext: () => void;
   onDiscuss: () => void;
 }
 
-export function HandSummary({ game, review, beginner, onNext, onDiscuss }: Props) {
+export function HandSummary({ game, review, reveals, beginner, onNext, onDiscuss }: Props) {
   const hero = game.players.find((p) => p.isHero)!;
   const net = netResult(game, hero.id);
   const sd = review.showdown;
@@ -76,6 +79,22 @@ export function HandSummary({ game, review, beginner, onNext, onDiscuss }: Props
             </li>
           ))}
         </ul>
+      )}
+
+      {reveals.length > 0 && (
+        <div className="section" data-tour="read-check">
+          <h3>Read check — were their bets honest?</h3>
+          <ul className="points">
+            {reveals.map((r) => (
+              <li key={r.playerId}>
+                <span className={`verdict ${r.verdict === 'honest' ? 'good' : 'questionable'}`} style={{ marginRight: 6 }}>
+                  {r.verdict === 'honest' ? 'Honest' : r.verdict === 'bluff' ? 'Bluff' : 'Semi-bluff'}
+                </span>
+                <TermText text={r.text} />
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       <div className="section" data-tour="hindsight-cards">

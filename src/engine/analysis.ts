@@ -20,6 +20,8 @@ export interface EquityInput {
    * bet this board). Holdings are re-drawn until the filter accepts them.
    */
   opponentFilter?: (a: Card, b: Card) => boolean;
+  /** Per-opponent filters (index = unknown opponent); falls back to `opponentFilter`. */
+  opponentFilters?: ReadonlyArray<((a: Card, b: Card) => boolean) | undefined>;
   iterations?: number;
   rng?: () => number;
 }
@@ -130,7 +132,7 @@ export function calculateEquity(input: EquityInput): EquityResult {
     }
   } else {
     const iterations = input.iterations ?? 8000;
-    const filter = input.opponentFilter;
+    const filters = Array.from({ length: unknownCount }, (_, o) => input.opponentFilters?.[o] ?? input.opponentFilter);
     const pool = Int32Array.from(deck);
     const runout = new Int32Array(missingBoard + unknownCount * 2);
     // Partial Fisher–Yates: positions [0, next) are dealt, the rest is the live deck.
@@ -147,6 +149,7 @@ export function calculateEquity(input: EquityInput): EquityResult {
       for (let o = 0; o < unknownCount; o++) {
         let a = draw();
         let b = draw();
+        const filter = filters[o];
         for (let tries = 0; filter && !filter(a, b) && tries < 40; tries++) {
           next -= 2; // return both cards to the live deck and redraw
           a = draw();

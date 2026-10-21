@@ -22,6 +22,7 @@ export function PlayView({ settings, active, onDiscuss }: Props) {
   const showOddsPanel = settings.showOdds || !!g.game?.finished;
   useAutoTour('play-intro', active && !g.game);
   useAutoTour('play-decision', active && g.heroToAct && !g.holdTable && showOddsPanel);
+  useAutoTour('play-postflop', active && g.heroToAct && !g.holdTable && showOddsPanel && g.game?.street !== 'preflop');
   useAutoTour('play-why', active && !!g.coach?.awaitingWhy);
   useAutoTour('play-feedback', active && !!g.coach?.feedback && !g.game?.finished);
   useAutoTour('play-summary', active && !!g.game?.finished && !!g.review);
@@ -73,9 +74,9 @@ export function PlayView({ settings, active, onDiscuss }: Props) {
         <PokerTable game={game} heroHandName={showOdds ? analysis?.threats?.hero.name : undefined} />
 
         {game.finished && review ? (
-          <HandSummary game={game} review={review} beginner={settings.beginnerMode} onNext={g.dealNext} onDiscuss={() => onDiscuss(review, game.handNumber)} />
+          <HandSummary game={game} review={review} reveals={g.reveals} beginner={settings.beginnerMode} onNext={g.dealNext} onDiscuss={() => onDiscuss(review, game.handNumber)} />
         ) : g.heroToAct && !g.holdTable ? (
-          <ActionBar game={game} onAction={g.heroAct} />
+          <ActionBar game={game} onAction={g.heroAct} shortcuts={active} />
         ) : (
           <div className="action-bar">
             <div className="waiting">
@@ -99,6 +100,8 @@ export function PlayView({ settings, active, onDiscuss }: Props) {
         {showOdds && (
           <OddsPanel
             analysis={analysis}
+            readsEquity={g.heroContext?.rangeEquity?.equity}
+            reads={g.heroContext?.reads}
             toCall={toCall}
             pot={potSize(game)}
             timeline={g.timeline}

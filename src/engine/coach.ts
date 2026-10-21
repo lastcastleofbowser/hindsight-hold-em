@@ -14,8 +14,10 @@ import {
   requiredEquity,
   startingHand,
 } from './analysis';
-import type { ActionType, Street } from './game';
-import { STREET_LABELS } from './game';
+import type { ActionType, Position, Street } from './game';
+import { POSITION_NAMES, STREET_LABELS } from './game';
+import type { HandLine, OpponentRead } from './reads';
+import { CHARTS, type ChartId, chartAction, chartFor, rangeShare } from './ranges';
 
 /**
  * Everything the coach knows at the moment hero acts. Built from the live
@@ -40,6 +42,12 @@ export interface DecisionContext {
   outs: OutsReport | null;
   nuts: NutsInfo | null;
   start: StartingHandInfo;
+  /** Hero's seat, for position-aware pre-flop advice. */
+  position?: Position;
+  /** What each opponent's actions suggest they hold (live table only). */
+  reads?: OpponentRead[];
+  /** Hero's own line this hand, for spotting bluffs and continuation bets. */
+  line?: HandLine;
 }
 
 export function buildContext(args: {
@@ -53,6 +61,9 @@ export function buildContext(args: {
   heroStack: number;
   iterations?: number;
   equity?: EquityResult;
+  position?: Position;
+  reads?: OpponentRead[];
+  line?: HandLine;
 }): DecisionContext {
   const opponents = Math.max(1, args.opponents);
   const iterations = args.iterations ?? 6000;
@@ -60,7 +71,9 @@ export function buildContext(args: {
     ...args,
     opponents,
     equity: args.equity ?? calculateEquity({ hero: args.hole, board: args.board, opponents, iterations }),
-    rangeEquity: facingBetEquity(args.hole, args.board, opponents, args.toCall, iterations),
+    rangeEquity: args.reads?.length
+      ? readsEquity(args.hole, args.board, args.reads, iterations)
+      : facingBetEquity(args.hole, args.board, opponents, args.toCall, iterations),
     threats: analyseThreats(args.hole, args.board, opponents),
     outs: countOuts(args.hole, args.board),
     nuts: findNuts(args.board),
@@ -83,6 +96,10 @@ export interface Recommendation {
   /** Moves that are also fine in this spot. */
   acceptable: Move[];
   why: string;
+  /** What kind of bet this is, when the move is aggressive. */
+  kind?: 'value' | 'bluff' | 'semi-bluff' | 'c-bet';
+  /** Suggested bet size as a fraction of the pot. */
+  size?: number;
 }
 
 /** Fair share of the pot if everyone's hand were equal. */
@@ -95,6 +112,11 @@ export const fairShare = (opponents: number) => 1 / (opponents + 1);
 export function facingBetEquity(hole: Card[], board: Card[], opponents: number, toCall: number, iterations: number): EquityResult | null {
   if (toCall <= 0 || board.length < 3) return null;
   return calculateEquity({ hero: hole, board, opponents, iterations, opponentFilter: bettingRange(board) });
+}
+
+/** Equity against what each opponent's actions suggest they hold. */
+export function readsEquity(hole: Card[], board: Card[], reads: OpponentRead[], iterations: number): EquityResult {
+  return calculateEquity({ hero: hole, board, opponents: reads.length, iterations, opponentFilters: reads.map((r) => r.accepts) });
 }
 
 export function realisticEquity(ctx: DecisionContext): number {
@@ -110,6 +132,67 @@ export function valueLine(opponents: number): number {
   return fs + (1 - fs) * 0.2;
 }
 
+/** Pre-flop advice from the position charts (unopened pots, and big blind defence). */
+function chartRecommendation(ctx: DecisionContext, position: Position, facingRaise: boolean): Recommendation | null {
+  const hand = ctx.start.notation;
+  const share = (id: ChartId) => Math.round(rangeShare(CHARTS[id].raise) * 100);
+  if (position === 'BB') {
+    if (!facingRaise) return null; // free option: handled by the general logic
+    const act = chartAction('BB', hand);
+    if (act === 'raise') return { move: 'raise', acceptable: ['raise', 'call'], kind: 'value', why: `From the big blind, ${hand} is strong enough to re-raise (3-bet) a raise.` };
+    if (act === 'call') return { move: 'call', acceptable: ['call', 'fold'], why: `From the big blind you get a good price, and ${hand} is in the usual defending range.` };
+    return { move: 'fold', acceptable: ['fold'], why: `Even with the big blind's discount, ${hand} is outside the defending range.` };
+  }
+  if (facingRaise) return null;
+  const id = chartFor(position);
+  const act = chartAction(id, hand);
+  const seat = POSITION_NAMES[position].toLowerCase();
+  return act === 'raise'
+    ? { move: 'raise', acceptable: ['raise', 'bet'], kind: 'value', why: `${hand} is in the ${seat} opening range (about ${share(id)}% of hands) — raise.` }
+    : {
+        move: 'fold',
+        acceptable: ['fold'],
+        why: `${hand} is outside the ${seat} opening range (only about ${share(id)}% of hands are played from there) — fold.`,
+      };
+}
+
+/**
+ * Spots where betting a weak hand makes money: a continuation bet as the
+ * pre-flop raiser, or a river bluff when the opponent has shown no interest.
+ */
+function bluffSpot(ctx: DecisionContext, eq: number): Recommendation | null {
+  const line = ctx.line;
+  if (!line || ctx.opponents !== 1 || !line.checkedToHero) return null;
+  if (ctx.street === 'flop' && line.heroRaisedPreflop) {
+    return {
+      move: 'bet',
+      acceptable: ['bet', 'check'],
+      kind: 'c-bet',
+      size: 0.33,
+      why: `You raised before the flop and they checked to you, so a small "continuation bet" (about a third of the pot) often wins right away — they miss the flop most of the time.`,
+    };
+  }
+  if (ctx.street === 'river' && line.opponentsPassive && eq < 0.4) {
+    return {
+      move: 'bet',
+      acceptable: ['bet', 'check'],
+      kind: 'bluff',
+      size: 0.6,
+      why: `Your opponent has checked every round since the flop, which usually means a weak hand. You can't win by checking, so bluff: a bet of about 60% of the pot only has to work ${pct(bluffBreakeven(0.6, 1))} of the time.`,
+    };
+  }
+  if (ctx.street === 'turn' && line.opponentsPassive && line.checkedRounds >= 2 && eq < 0.45) {
+    return {
+      move: 'bet',
+      acceptable: ['bet', 'check'],
+      kind: 'bluff',
+      size: 0.5,
+      why: `Your opponent has checked the flop and the turn — they rarely have much. A half-pot bet can take the pot away now.`,
+    };
+  }
+  return null;
+}
+
 const hasStrongDraw = (ctx: DecisionContext) =>
   !!ctx.outs && ctx.outs.total >= 8 && (ctx.street === 'flop' || ctx.street === 'turn');
 
@@ -121,6 +204,8 @@ export function recommend(ctx: DecisionContext): Recommendation {
   if (ctx.street === 'preflop') {
     const { tier, notation } = ctx.start;
     const facingRaise = ctx.toCall > ctx.bigBlind;
+    const chartRec = ctx.position ? chartRecommendation(ctx, ctx.position, facingRaise) : null;
+    if (chartRec) return chartRec;
     if (tier === 'Premium') return { move: 'raise', acceptable: ['raise', 'bet'], why: `${notation} is a premium hand — raise to build the pot and thin the field.` };
     if (!facingRaise) {
       if (tier === 'Strong') return { move: 'raise', acceptable: ['raise', 'bet', 'call'], why: `${notation} is strong enough to open with a raise.` };
@@ -146,8 +231,11 @@ export function recommend(ctx: DecisionContext): Recommendation {
     return { move: 'fold', acceptable: ['fold'], why: `You need ${pct(need)} equity to call but only have about ${pct(eq)}.` };
   }
 
-  if (eq >= value) return { move: 'bet', acceptable: ['bet', 'raise'], why: `With ${pct(eq)} equity vs ${ctx.opponents} opponent(s) you should bet for value.` };
-  if (hasStrongDraw(ctx)) return { move: 'bet', acceptable: ['bet', 'raise', 'check'], why: `A semi-bluff with ${ctx.outs!.total} outs can win now or improve later.` };
+  if (eq >= value) return { move: 'bet', acceptable: ['bet', 'raise'], kind: 'value', size: 0.6, why: `With ${pct(eq)} equity vs ${ctx.opponents} opponent(s) you should bet for value.` };
+  if (hasStrongDraw(ctx))
+    return { move: 'bet', acceptable: ['bet', 'raise', 'check'], kind: 'semi-bluff', size: 0.6, why: `A semi-bluff with ${ctx.outs!.total} outs can win now or improve later.` };
+  const bluff = bluffSpot(ctx, eq);
+  if (bluff) return bluff;
   return {
     move: 'check',
     acceptable: ['check'],
@@ -189,6 +277,12 @@ export function plainEnglish(ctx: DecisionContext, rec: Recommendation): string 
     const need = requiredEquity(ctx.toCall, ctx.pot);
     parts.push(`Calling costs ${ctx.toCall} to win a pot of ${ctx.pot + ctx.toCall}, so it pays off if you win more than ${outOfTen(need)} times out of 10.`);
     parts.push(eq >= need ? 'You win more often than that, so staying in makes money over time.' : 'You win less often than that, so calling loses money over time and folding saves chips.');
+  } else if (rec.kind === 'bluff') {
+    parts.push("Your opponent keeps checking, which usually means they're weak. Your hand won't win if it's shown, so a bet is your only way to win — if they fold, the pot is yours.");
+  } else if (rec.kind === 'c-bet') {
+    parts.push('You raised before the flop, so they expect you to have something. A small bet now often makes them fold, because most of the time the flop missed them too.');
+  } else if (rec.kind === 'semi-bluff') {
+    parts.push("You don't have a made hand yet, but you could improve. Betting can win the pot now, and you can still hit your card if they call.");
   } else if (rec.move === 'bet' || rec.move === 'raise') {
     parts.push('Your hand is strong, so betting makes players with weaker hands pay to stay in.');
   } else if (rec.move === 'check') {
@@ -222,7 +316,13 @@ export function evaluateDecision(ctx: DecisionContext, action: ActionType, amoun
   );
   if (ctx.toCall > 0) {
     points.push(`Pot odds: calling ${ctx.toCall} into ${ctx.pot} needs ${pct(need)} equity to break even.`);
-    if (ctx.rangeEquity) points.push(`Players who bet usually hold a pair or a draw. Against that kind of range your equity is about ${pct(eq)}.`);
+    if (ctx.rangeEquity && !ctx.reads?.length) points.push(`Players who bet usually hold a pair or a draw. Against that kind of range your equity is about ${pct(eq)}.`);
+  }
+  for (const read of (ctx.reads ?? []).filter((r) => r.steps.length > 0).slice(0, 2)) {
+    points.push(`Read: ${read.summary}`);
+  }
+  if (ctx.reads?.length && ctx.rangeEquity) {
+    points.push(`Against the hands their actions suggest, you win about ${pct(ctx.rangeEquity.equity)} (vs ${pct(ctx.equity.equity)} against random cards).`);
   }
   if (ctx.threats) {
     points.push(`Right now you hold ${ctx.threats.hero.name}. Chance at least one opponent is already ahead: ${pct(ctx.threats.pBeatAny)}.`);
@@ -242,6 +342,9 @@ export function evaluateDecision(ctx: DecisionContext, action: ActionType, amoun
     }
   }
 
+  if ((rec.kind === 'bluff' || rec.kind === 'c-bet') && move === 'check') {
+    points.push('Checking is fine too — but this was a good chance to win the pot without the best hand.');
+  }
   const headline =
     verdict === 'great'
       ? `Good ${move}. ${rec.why}`

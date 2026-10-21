@@ -100,6 +100,7 @@ export function BeginnerView({ settings, active }: Props) {
       paragraphs.push(`You folded earlier. ${winner?.name} won the showdown${w?.hand ? ` with ${w.hand.name.toLowerCase()}` : ''}.`);
     }
     paragraphs.push(net > 0 ? `You won ${net} chips this hand. 🎉` : net < 0 ? `You lost ${-net} chips this hand.` : 'You broke even this hand.');
+    for (const r of g.reveals) paragraphs.push(r.text);
     paragraphs.push("Everyone's cards are now face up — have a look at what they had.");
     push({ id: `${game.handNumber}-summary`, kind: 'summary', title: 'Hand over', paragraphs });
   }, [game?.finished, review]);
@@ -144,7 +145,7 @@ export function BeginnerView({ settings, active }: Props) {
             </button>
           </div>
         ) : g.heroToAct && heroContext && advice ? (
-          <BeginnerActions game={game} ctx={heroContext} suggested={advice.move} onAction={g.heroAct} />
+          <BeginnerActions game={game} ctx={heroContext} suggested={advice.move} suggestedSize={advice.size} onAction={g.heroAct} />
         ) : (
           <div className="action-bar">
             <div className="waiting">{hero.folded ? 'You folded. Finishing the hand…' : `Waiting for ${game.players[game.toAct]?.name ?? 'the dealer'}…`}</div>
@@ -187,7 +188,19 @@ export function BeginnerView({ settings, active }: Props) {
   );
 }
 
-function BeginnerActions({ game, ctx, suggested, onAction }: { game: GameState; ctx: DecisionContext; suggested: Move; onAction: (a: PlayerAction) => void }) {
+function BeginnerActions({
+  game,
+  ctx,
+  suggested,
+  suggestedSize,
+  onAction,
+}: {
+  game: GameState;
+  ctx: DecisionContext;
+  suggested: Move;
+  suggestedSize?: number;
+  onAction: (a: PlayerAction) => void;
+}) {
   const legal = legalActions(game);
   const pot = potSize(game);
   const clamp = (to: number) => Math.max(legal.minTo, Math.min(legal.maxTo, Math.round(to / game.bigBlind) * game.bigBlind));
@@ -195,6 +208,8 @@ function BeginnerActions({ game, ctx, suggested, onAction }: { game: GameState; 
   const small = clamp(legal.canBet ? pot * 0.5 : game.currentBet + (pot + ctx.toCall) * 0.5);
   const big = clamp(legal.canBet ? pot : game.currentBet + (pot + ctx.toCall));
   const pick = (m: Move) => (m === suggested || (m === 'bet' && suggested === 'raise') || (m === 'raise' && suggested === 'bet') ? ' suggested' : '');
+  // Small bluffs and continuation bets point at the smaller button; value bets at the bigger one.
+  const bigSuggested = (suggestedSize ?? 0.5) > 0.5;
 
   return (
     <div className="action-bar beginner-actions" data-tour="beginner-actions">
@@ -216,12 +231,18 @@ function BeginnerActions({ game, ctx, suggested, onAction }: { game: GameState; 
         )}
         {aggressive && (
           <>
-            <button className={`btn aggressive${pick(legal.canBet ? 'bet' : 'raise')}`} onClick={() => onAction({ type: legal.canBet ? 'bet' : 'raise', to: small })}>
+            <button
+              className={`btn aggressive${big > small && bigSuggested ? '' : pick(legal.canBet ? 'bet' : 'raise')}`}
+              onClick={() => onAction({ type: legal.canBet ? 'bet' : 'raise', to: small })}
+            >
               {legal.canBet ? `Bet ${small}` : `Raise to ${small}`}
               <small>a smaller {legal.canBet ? 'bet' : 'raise'}</small>
             </button>
             {big > small && (
-              <button className="btn aggressive" onClick={() => onAction({ type: legal.canBet ? 'bet' : 'raise', to: big })}>
+              <button
+                className={`btn aggressive${bigSuggested ? pick(legal.canBet ? 'bet' : 'raise') : ''}`}
+                onClick={() => onAction({ type: legal.canBet ? 'bet' : 'raise', to: big })}
+              >
                 {legal.canBet ? `Bet ${big}` : `Raise to ${big}`}
                 <small>a bigger {legal.canBet ? 'bet' : 'raise'}</small>
               </button>

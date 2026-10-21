@@ -53,11 +53,16 @@ self.addEventListener('fetch', (event) => {
   };
 }
 
+// The Friends tab talks to the game server (npm run server) at /ws.
+const friendsProxy = { '/ws': { target: 'ws://localhost:8787', ws: true } };
+
 export default defineConfig({
   base: './',
   plugins: [react(), offlineServiceWorker()],
+  server: { proxy: friendsProxy },
+  preview: { proxy: friendsProxy },
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'server/**/*.test.ts'],
   },
 });

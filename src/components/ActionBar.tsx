@@ -4,9 +4,11 @@ import { type GameState, type PlayerAction, legalActions, potSize } from '../eng
 interface Props {
   game: GameState;
   onAction: (a: PlayerAction) => void;
+  /** Keyboard shortcuts only when this table is on screen. */
+  shortcuts?: boolean;
 }
 
-export function ActionBar({ game, onAction }: Props) {
+export function ActionBar({ game, onAction, shortcuts = true }: Props) {
   const legal = legalActions(game);
   const pot = potSize(game);
   const aggressive = legal.canBet || legal.canRaise;
@@ -28,6 +30,7 @@ export function ActionBar({ game, onAction }: Props) {
 
   // Keyboard shortcuts: F fold, C check/call, B/R bet or raise.
   useEffect(() => {
+    if (!shortcuts) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       const k = e.key.toLowerCase();
@@ -37,7 +40,7 @@ export function ActionBar({ game, onAction }: Props) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onAction, legal.canCheck, legal.canBet, aggressive, to]);
+  }, [shortcuts, onAction, legal.canCheck, legal.canBet, aggressive, to]);
 
   const allIn = to >= legal.maxTo;
   return (

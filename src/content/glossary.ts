@@ -43,7 +43,7 @@ export const GLOSSARY: GlossaryEntry[] = [
   { term: 'Call', group: 'Actions', match: [], definition: 'Match the current bet to stay in the hand.' },
   { term: 'Raise', group: 'Actions', match: [], definition: 'Increase the current bet. Other players must call the new amount, raise again, or fold.' },
   { term: 'Fold', group: 'Actions', match: [], definition: 'Give up your hand and any chips you already put in. You cannot win the pot after folding.' },
-  { term: 'All-in', group: 'Actions', match: ['all-in', 'all in'], definition: 'Betting every chip you have left.' },
+  { term: 'All-in', group: 'Actions', match: ['all-in'], definition: 'Betting every chip you have left.' },
 
   // Hands
   { term: 'High card', group: 'Hands', match: ['high card'], definition: 'No pair or better: your highest card plays, then the next highest, and so on.' },
@@ -82,6 +82,8 @@ export const GLOSSARY: GlossaryEntry[] = [
   { term: 'Bluff', group: 'Strategy', match: ['bluff', 'bluffs', 'bluffing'], definition: 'A bet with a weak hand to make better hands fold.' },
   { term: 'Semi-bluff', group: 'Strategy', match: ['semi-bluff'], definition: 'A bluff with a draw: you might win immediately if they fold, and can still win by hitting your outs if called.' },
   { term: 'Range', group: 'Strategy', match: ['range'], definition: 'All the hands a player could have, given how they have played. Thinking in ranges beats guessing one exact hand.' },
+  { term: 'GTO', group: 'Strategy', match: ['gto', 'game theory optimal'], definition: 'Game-theory-optimal: a balanced strategy, found by "solver" software, that can\'t be exploited. Ranges charts give a simplified version for the first decision of a hand.' },
+  { term: 'Continuation bet', group: 'Strategy', match: ['continuation bet', 'c-bet'], definition: 'A bet on the flop by the player who raised before the flop, "continuing" the story of a strong hand. It often wins because most flops miss most hands.' },
   { term: 'Fold equity', group: 'Strategy', match: ['fold equity'], definition: 'The extra value a bet gets from the chance that opponents fold.' },
   { term: 'Position', group: 'Strategy', match: ['position'], definition: 'Where you act in the betting order. Acting last ("in position") is an advantage: you see what others do first.' },
   { term: 'Cooler', group: 'Strategy', match: ['cooler'], definition: 'A strong hand losing to an even stronger one where the money goes in no matter how well you play.' },

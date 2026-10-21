@@ -8,7 +8,7 @@ import {
   type ReasonTag,
   type Verdict,
   evaluateDecision,
-  facingBetEquity,
+  readsEquity,
   inferReasons,
   respondToReason,
 } from '../engine/coach';
@@ -23,8 +23,10 @@ import {
   legalActions,
   netResult,
   newHand,
+  positionOf,
   potSize,
 } from '../engine/game';
+import { buildReads, handLine, readChecks } from '../engine/reads';
 import { type Decision, type HandReview, resolveShowdown, reviewHand } from '../engine/review';
 import { BOT_DELAY_MS, ITERATIONS, type Settings } from './useSettings';
 
@@ -119,6 +121,7 @@ export function useGame(settings: Settings, options: GameOptions = {}) {
   const heroContext: DecisionContext | null = useMemo(() => {
     if (!game || !hero || !analysis || !heroToAct) return null;
     const toCall = legalActions(game).callAmount;
+    const reads = buildReads(game, hero.id);
     return {
       street: game.street,
       hole: hero.hole,
@@ -129,7 +132,10 @@ export function useGame(settings: Settings, options: GameOptions = {}) {
       bigBlind: game.bigBlind,
       heroStack: hero.stack,
       equity: analysis.equity,
-      rangeEquity: facingBetEquity(hero.hole, game.board, analysis.opponents, toCall, iterations),
+      rangeEquity: readsEquity(hero.hole, game.board, reads, iterations),
+      position: positionOf(hero.id, game.buttonIndex, game.players.length),
+      reads,
+      line: handLine(game, hero.id),
       threats: analysis.threats,
       outs: analysis.outs,
       nuts: analysis.nuts,
@@ -254,9 +260,12 @@ export function useGame(settings: Settings, options: GameOptions = {}) {
     });
   }, [game, hero, review]);
 
+  const reveals = useMemo(() => (game?.finished && hero ? readChecks(game, hero.id) : []), [game?.finished, game?.handNumber]);
+
   return {
     game,
     hero,
+    reveals,
     analysis,
     heroContext,
     heroToAct,
