@@ -1,0 +1,13 @@
+{
+  "name": "Hindsight Hold'em",
+  "short_name": "Hindsight",
+  "description": "Offline Texas Hold'em trainer with live odds and an AI coach.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0a1f17",
+  "theme_color": "#0b3d2a",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
