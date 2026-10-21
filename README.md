@@ -1,403 +1,60 @@
 # Hindsight Hold'em
 
-Texas Hold'em hand analytics and probability app — an offline-first No-Limit **Texas Hold'em** trainer that shows live win probabilities, teaches beginners how to read hands, and has an AI coach that asks *"why did you do that?"* and explains where your logic held up or broke down.
-
-> The app covers **Texas Hold'em only**: two private hole cards per player, five shared community cards (flop, turn, river), four betting rounds, and the best five-card hand from those seven wins.
-
-> **Current version:** Iteration 5 (v0.5.0). See the [iteration log](#iteration-log) for what changed in each iteration.
-
----
+An offline-first No-Limit Texas Hold'em trainer. Play against bots with live odds, get every decision graded by a coach that asks *"why did you do that?"*, then see the hand again in hindsight with everyone's cards face up.
 
 ## Features
 
-The app has eight tabs: **Play & Train**, **Beginner**, **Hand Review**, **Which Hand Wins?**, **Ranges**, **Friends**, **Profile** and **Learn**. Everything except Friends and Profile runs in the browser and works offline. Those two need the Hindsight Hold'em server and an account.
-
-**No scrolling to act:** Play & Train, Beginner and Friends fit the table and the action buttons (Fold / Check / Call / Bet) on screen at any window size, from phones to large monitors. The table scales to the space available, and side panels (odds, coach, summary, scoreboard) scroll on their own. On phones the panels follow below the table, and the tabs become one swipeable row.
-
-### 1. Play & Train (gamified table)
-- A clean poker-table UI (felt, rail, dealer button, chips) with cards dealt at random and animated onto the table.
-- Play against 1–5 bot opponents with different styles: Tight, Balanced, Loose, Aggressive, or a mixed table.
-- **Table positions** on every seat: Dealer (BTN), Small blind (SB), Big blind (BB), Under the gun (UTG), Middle position (MP) and Cutoff (CO). Hover a badge for what it means. Each seat's bet and last action sit inside the seat, so they never cover the position or dealer button.
-- **Live probabilities in every betting round (pre-flop, flop, turn, river):**
-  - Win chance (equity), split into win and tie, with an "even share" marker.
-  - Pot odds: the win chance you need to call, compared with what you have.
-  - Your current made hand, highlighted on the table.
-  - **Chance someone already has you beat**, with the hands that beat you grouped by type (e.g. Flush: 42 combos).
-  - **The nuts:** the best possible hand on the board, with an example holding.
-  - **Outs**, plus the odds of hitting on the next card and by the river.
-  - Odds of finishing with each hand type by the river.
-  - **Win-chance-by-round chart** showing how your percentage moved pre-flop → flop → turn → river.
-- **Hindsight review after every hand:**
-  - Everyone's hole cards are revealed.
-  - A **showdown explanation** lists each player's best five cards and says why the winning hand won.
-  - Each decision is graded.
-  - A second chart line shows your *true* equity against the cards opponents actually held.
-- Session stats: hands played, net chips, and the share of good decisions.
-- Keyboard shortcuts: `F` fold, `C` check/call, `B`/`R` bet/raise.
-
-### 2. The coach
-- **Live "why?" coaching** (Settings → Coach → *Ask why*). After each action the table pauses and the coach asks why you did it. Pick one or more reasons (or type your own) and the coach:
-  - grades the decision (Great / Reasonable / Questionable / Mistake);
-  - shows the numbers behind it;
-  - responds to *your stated reasoning*, e.g. telling you when a "bluff" was really a value bet, or how often a bluff needs to work to break even.
-- **Hint** button: ask what the coach would do before acting.
-- **Opponent reads.** The coach turns each opponent's actions into a likely range of hands and explains it in words. For example: *"Riley raised first from under the gun — players usually open only about 16% of hands from there; then bet 60 into 65 on the turn — a big bet: usually a very strong hand, or a bluff trying to look like one."* What that means for you:
-  - Your win chance is measured against those likely hands, not random cards, and the odds panel shows both ("Reading the table").
-  - Big bets are flagged as "polarised" (very strong or a bluff), calls as medium, and checks as weak.
-  - After the hand, a **read check** says whether each opponent's bet was honest, a semi-bluff or a bluff, using their real cards.
-- **Bluffing opportunities.** The coach recommends a bet even without the best hand when it is likely to work, and explains why and how often it needs to succeed:
-  - a small **continuation bet** on the flop after you raised pre-flop and the opponent checks;
-  - a **river bluff** heads-up when the opponent has checked every round and your hand can't win at showdown;
-  - a **turn stab** after they check the flop and the turn.
-
-  The bots fold weak hands to these bets, so you can practise bluffing safely. Checking is still graded as fine.
-- **Position-aware pre-flop advice:** unopened pots follow the Ranges charts for your seat, and big blind defence uses the BB chart.
-- **Hand Review chat:** recreate a past hand by picking your cards, the board, and optionally your opponent's cards. Record your action, the pot, the bet you faced and your reasoning for each betting round, plus **what happened at the table** (won / lost / split). The coach then:
-  - walks through each round, judging the decision on what you could know at the time;
-  - runs a **showdown check** (see below);
-  - uses hindsight to show your real equity against the opponent's actual cards;
-  - names your biggest leak and points out results-oriented thinking;
-  - answers follow-up questions in the chat: who should have won, outs, pot odds, what you should have done in a round, the nuts, equity.
-- **Showdown check — "who should have won?"** With the full board and the opponent's cards, the coach:
-  - shows both players' best five cards;
-  - explains in plain English why one hand beats the other (hand type, then pair rank, then kickers), or why it's a split;
-  - lists what would have beaten your hand on that board (or tells you that you had the nuts) and whether the opponent's hand was one of those;
-  - **warns you if the result you reported contradicts the rules**, e.g. "You said you lost, but by the rules of Texas Hold'em you should have won".
-- Any table hand can be sent to the chat with **Discuss with coach**.
-- Two built-in examples: **Example: bluff** (a missed draw turned into a river bluff) and **Example: who won?** (A-K makes a straight against Q-3, reported as a loss).
-
-### 3. Beginner (a simpler table with a talking coach)
-- The same Texas Hold'em game, simplified: two balanced opponents, a slower pace, and no odds panel or charts.
-- **Before every decision the coach talks you through it** in everyday words:
-  - what your two cards mean, e.g. *"You have a Six and a Four of different suits — 'offsuit' (written 64o). Both are low cards… This is a weak starting hand."*;
-  - what your seat means (dealer, blinds, under the gun);
-  - what you have on the board and what to watch out for (e.g. three hearts on the board);
-  - the price of a call in "times out of 10".
-
-  It ends with a clear suggestion: *"I'd fold here."*
-- The suggested button is marked **★ Coach's pick**, and every button says what it does ("Check — free, pass to the next player"). You can always choose something else.
-- A simple **hand-strength meter** (Very weak → Very strong) replaces the percentages.
-- After each move you get **one or two sentences** of feedback, and the table waits until you press Continue. At the end of the hand the coach says who won and why.
-- It uses the same recommendation engine as Play & Train, so both tabs always agree on the right move. That includes the opponent reads ("Reading Sam: …") and bluff spots, which the coach explains in everyday words, e.g. *"This is a good moment to bluff… a bet of about 60% of the pot only needs them to fold about 4 times in 10."*
-
-### 4. Which Hand Wins? (hand-reading trainer)
-- Several hands (2–4 players) are dealt face up with a full board. Pick the winner (or a split pot), **name the winning hand type**, and **write a short justification** (required).
-- **Optional flop step that teaches equity:**
-  - Guess who is ahead on the flop.
-  - See each player's exact win chance, counted over every possible turn and river.
-  - See the outs for each player who is behind, and the **rule of 4** estimate next to the exact figure, with an explanation when they differ.
-- Feedback explains the result in plain English, highlights the winning five cards, and checks your reasoning. For example: "You mentioned a flush, but Player A has at most 3 hearts — a flush needs five cards of one suit."
-- Practice modes:
-  - **Mixed**
-  - **Straights & flushes**: deals are weighted so someone makes a straight or a flush.
-  - **Kickers & ties**: the top two hands are the same type.
-- Score, current streak and best streak are saved in the browser.
-
-### 5. Ranges (pre-flop charts and drill)
-- A 13×13 chart for each seat — UTG, MP, CO, Button, SB, BB defending against a button raise, and heads-up — shows which starting hands to raise (green), call (blue, big blind only) or fold. Each chart shows its share of all hands, a short explanation, and what to do with any hand you hover or tap.
-- **Range drill:** you get a seat and a hand, decide raise/call/fold, then see the chart with your hand highlighted. Score and streak are saved.
-- The charts are **approximations of standard solver-style 6-max, 100-big-blind opening ranges**, simplified to always/never decisions. They are not output from a solver run and not taken from any commercial tool such as GTO Wizard. They are a strong, honest baseline for learning.
-
-### 6. Friends (online — play with friends, chips carry over)
-- **Accounts:** log in or create a free account first (Profile tab, or the Friends tab prompts you). Your username is your name at the table.
-- **Tables:** one player creates a table and becomes the **host**. They get a 6-character code (e.g. `DAYHFK`) and friends join with it. 2–6 players are in the same hand with the same flop, turn and river. **Only the host can deal the first hand**; after that anyone at the table can deal the next one.
-- **Chips carry over.** Everyone buys in for 1,000 chips (100 big blinds), and stacks carry over from hand to hand instead of resetting. Side pots are handled properly when someone is all-in for less.
-- **Scoreboard:** chips, **net** (chips minus everything bought in), hands won (a split counts as a share) and buy-ins. Going all-in recklessly shows up as a loss, not just a missed win.
-- **Out of chips?** You can **buy back in** for another 1,000, which is logged and counts against your net, or **leave the table**. Leaving keeps your chips on record; if you come back to the same table you return with them.
-- **Table log:** joins, buy-ins, busts and departures.
-- **Saved automatically:** after every hand your results are saved to your account, so you can see them in Profile.
-- **Timing and reconnects:** each player has 45 seconds to act; after that they automatically check or fold. Players who drop out are folded when their turn comes, and rejoin their seat automatically when they reconnect or reload.
-- **Security:**
-  - the server deals with a cryptographically random shuffle and validates every action with the same engine;
-  - the deck never leaves the server, and other players' cards are only sent once the hand is over;
-  - codes are sanitised, and messages are size- and rate-limited.
-- **Testing on your own:** each player needs their own account, and tabs in the same browser share one login. Use a private window or a second browser for the second player, or another device on your network.
-
-### 7. Profile (online — your saved results)
-- Lifetime totals: net chips, games, hands won out of hands played, buy-ins, best and worst game.
-- A **progress chart** of your running net total after each game, with hover for each game's result.
-- **Recent games:** date, table code, everyone who played and their result, your hands won, buy-ins and result. A game still being played is marked *live*.
-
-### 8. Learn (beginner support)
-- **Texas Hold'em in two minutes:** the rules, betting rounds and how the showdown works.
-- **Hand rankings chart** from Royal Flush to High Card, with example cards and plain-English descriptions.
-- **Equity & pot odds lesson** with a worked example, an **outs calculator** (exact chance vs rule of 4/2) and a **pot odds calculator**.
-- **Searchable glossary** of about 60 Texas Hold'em terms.
-
-### Beginner-friendly everywhere
-- **Hover or tap any dotted-underlined term** (equity, outs, kicker, the nuts, pot odds, flush draw…) for a definition. Terms are auto-linked in coach feedback, chat messages, summaries and the odds panel.
-- **Beginner explanations** (Settings, on by default): every piece of coach feedback also has a plain-English version, e.g. "you'd win about 4 times out of 10; calling pays off if you win more than 3 times out of 10".
-- **Tutorial mode** (Settings, on by default): guided spotlight tours highlight each button and panel the first time it appears and explain what it does. That includes:
-  - the action buttons and bet sizing;
-  - the position badges;
-  - every part of the odds panel (the win-chance %, the meter's even-share and pot-odds marks, win/split, pot odds, threats, outs);
-  - the coach's grade, plain-English line and numbers;
-  - the win-chance-by-round graph and its hindsight line.
-
-  Tours run on every tab and in Settings. Use **Back/Next** (or the arrow keys) to move through a tour, **Skip** to leave it, **Turn off tutorial mode** to stop all tours, or the header's **Tour** button to replay the current screen's tour. Switching tutorial mode back on replays all tours.
-- Jargon has been replaced where possible. The app says "betting round" or "round" instead of the insider term "street"; the glossary explains that players call a round a street.
-
-### Settings that save
-- Settings are edited as a draft. Nothing changes until you press **Save changes**.
-- The save is confirmed by reading the stored value back, and the drawer shows **✓ Settings saved**, **● Unsaved changes**, or an error if the browser blocks storage.
-- Closing with unsaved changes asks whether to save or discard them. **Reset to defaults** is available too.
-
-### Offline-first
-- All poker maths (hand evaluation, equity simulation, outs, nuts, coaching logic, quiz grading) runs in the browser. **No server is required.**
-- A service worker precaches the whole app after the first visit, so it works with no connection. It can be installed as an app (PWA).
-- The only network features are Friends and Profile, which talk to the Hindsight Hold'em server. The training tabs make no network requests after the app loads, and the service worker never caches account or history data.
-- The header no longer shows an online/offline indicator. Connection status is shown inside the Friends tab, the only place it matters.
-
----
-
-## How AI is used
-
-The coach is **not a large language model**. Since iteration 3 the app has no online AI at all; the optional Claude chat from iterations 1–2 was removed.
-
-The built-in coach is an expert system written in TypeScript, not a trained model. It combines:
-- exact hand evaluation;
-- Monte Carlo simulation (thousands of random deals) to estimate equity;
-- opponent reads: a range of likely hands for each opponent, built from their actions (pre-flop charts, bet sizes, checks and calls);
-- poker rules of thumb (pot odds, value thresholds, starting-hand tiers).
-
-The coach's sentences are templates written in the code and filled in with these numbers. The opponent reads and bluff spots are rules too, not a learned model. Its "why did you do that?" replies come from matching your chosen reasons and keywords in your text. The bots use the same engine plus personality settings. Everything runs on the user's device, needs no internet, and gives the same answer for the same spot.
-
-### Will it work on other computers?
-- **Yes.** It's a static website that runs in any modern browser (Chrome, Edge, Safari, Firefox) on Windows, macOS, Linux, iOS or Android.
-- To share it, deploy `dist/` to a web host (see below) and send the link; nothing needs installing. Alternatively, another developer can clone the repo and run `npm install && npm run dev` (Node.js 18+).
-- After the first visit the service worker caches the app, so it keeps working offline on that device, and it can be installed like an app.
-- **Per-device data:** settings, saved review drafts and quiz scores live in that browser's local storage. They don't sync between computers.
-- **Friends** and **Profile** need the server to be reachable at the same address as the app (see below). Accounts work from any computer; your saved games follow your login.
-
----
+- **Play & Train** — play 1–5 bots with different styles. A glance strip shows your win chance, pot odds and outs; tabs hold the coach, full odds, a win-chance chart and the hand summary.
+- **Coach** — grades each decision and replies to your reasoning. Considers position, opponent reads, chip stacks and stack-to-pot ratio; flags leaks like limping; works pot odds out step by step in chips.
+- **Hindsight review** — after each hand: everyone's cards, your real equity against them, whether bets were bluffs, and your biggest leak.
+- **Beginner** — a calmer table where the coach talks you through every hand in plain English.
+- **Hand Review** — recreate a hand you played elsewhere and discuss it with the coach.
+- **Which Hand Wins?** — hand-reading quiz.
+- **Ranges** — pre-flop charts for each seat.
+- **Friends** — play the same table online with a room code.
+- **Profile** — accounts, saved games and progress. Chips persist between hands and visits.
+- **Learn** — rules, hand rankings and a glossary; poker terms show definitions on hover throughout.
+- **Tutorial mode** — guided tours of each screen.
+- **Offline** — installable; everything except Friends and accounts works without internet.
 
 ## Getting started
 
-Requires Node.js 18+ (developed on Node 19).
+Requires Node.js 18+.
 
 ```bash
 npm install
-npm run dev        # development server at http://localhost:5173
-npm test           # unit tests (Vitest)
-npm run build      # type-check + production build into dist/
-npm run preview    # serve the production build (service worker active) at http://localhost:4173
-npm run server     # server: the built app + accounts + friends at http://localhost:8787 (run npm run build first)
+npm run dev      # app at http://localhost:5173
+npm run server   # accounts + Friends at http://localhost:8787 (run alongside dev)
+npm test         # unit tests
+npm run build    # type-check + production build into dist/
 ```
 
-The server stores accounts and game history in an SQLite database at `data/hindsight.sqlite`, which is git-ignored. Change the folder with `DATA_DIR=/path npm run server`.
+The server stores accounts and history in SQLite at `data/hindsight.sqlite` (git-ignored; change with `DATA_DIR`).
 
-`npm run dev` and `npm run preview` forward the Friends connection (`/ws`) and the accounts API (`/api`) to the server on port 8787, so run `npm run server` in a second terminal to use Friends during development.
+**Deploying:** `dist/` is a static site for training only. For accounts and Friends, run `npm run build && npm run server` on a Node host with WebSockets and HTTPS, and give `DATA_DIR` a persistent disk. Behind a reverse proxy, set `TRUST_PROXY=1`.
 
-The offline service worker is only registered in production builds (`npm run build` + `npm run preview`, or any static host serving `dist/`).
+## How the coach works
 
-### Deploying to a website domain
-- **Training only:** `dist/` is a fully static site with relative asset paths. Upload it to any static host (Netlify, Vercel, GitHub Pages, S3/CloudFront, nginx). Serve over HTTPS so the service worker can register. The Friends tab will show "Can't reach the game server".
-- **With Friends:** deploy the repo to a Node.js host that supports WebSockets (Render, Railway, Fly.io, a VPS…). Run `npm ci && npm run build`, then start with `npm run server`; the host sets `PORT`. The server serves the app and the WebSocket (`/ws`) from the same address, so the app finds it automatically. Put it behind HTTPS so the browser uses a secure WebSocket (`wss://`).
-- **Keep the database:** give the server a persistent disk and point `DATA_DIR` at it. Many hosts wipe the app folder on every deploy, which would lose accounts.
-- Behind a reverse proxy, set `TRUST_PROXY=1` so login rate-limiting sees real client addresses.
-- Live tables live in the server's memory: restarting the server ends tables in progress. Results up to the last finished hand are already saved. Idle tables are removed after 30 minutes.
+No AI model or internet: the coach is rule-based TypeScript. It combines exact hand evaluation, Monte Carlo equity, opponent reads built from their betting, pre-flop range charts and standard rules (pot odds, value thresholds, stack depth). Same spot, same answer.
 
----
+The coach logic is in `src/engine/coach.ts`; the numbers come from `src/engine/analysis.ts`.
 
-## Technology choices
-
-| Choice | Why |
-|---|---|
-| **TypeScript** | The poker engine is precise, logic-heavy code. Static types catch whole classes of bugs (card encodings, game state) at compile time. |
-| **React 18** | A component model suits a table of seats, cards and panels that re-render as game state changes. |
-| **Vite 5** | Fast dev server and a simple static production build, ideal for a website domain. |
-| **No UI framework / plain CSS** | Full control over the poker-table look; zero runtime styling dependencies. |
-| **Hand-written service worker** | Generated at build time from the bundle's file list (see `vite.config.ts`); small and dependency-free. |
-| **Vitest** | Same config and module system as Vite. |
-| **Node.js + `ws`** (Friends and Profile) | A small WebSocket server that reuses the TypeScript game engine unchanged (run with `tsx`), so friends' hands follow exactly the same rules as the trainer. |
-| **SQLite via `sql.js`** | A real SQL database compiled to WebAssembly, so it needs no native build and runs on any Node version. It is saved atomically to one file. For a large user base, the plain SQLite schema moves easily to a server database. |
-| **scrypt + random session tokens** | Built into Node's `crypto`, so no extra security dependencies. Passwords are hashed with a per-user salt, and only SHA-256 hashes of session tokens are stored. |
-
----
-
-## Architecture
+## Project layout
 
 ```
-src/
-  engine/               Pure TypeScript Texas Hold'em engine (no React, fully unit-tested)
-    cards.ts            Card encoding (0–51 ints), parsing, shuffling, seeded RNG
-    evaluator.ts        Fast 7-card hand evaluator (10 categories incl. Royal Flush), hand naming, best-five finder
-    analysis.ts         Equity (Monte Carlo / exact), betting-range model, threats, nuts, outs, starting-hand tiers, pot odds
-    explain.ts          Plain-English hand comparisons (why A beats B, kickers, splits), ranking descriptions
-    game.ts             Betting engine: blinds, betting rounds, legal actions, raises, all-ins, showdown
-    bots.ts             Bot opponents (equity + personality profiles)
-    coach.ts            Recommendation (position charts, reads, bluff spots), grading, plain-English explanations, "why?" responses
-    reads.ts            Opponent reads from their actions, read checks after the hand, hero's line for bluff spots
-    ranges.ts           Pre-flop range charts per position, range-notation parser
-    beginnerCoach.ts    Beginner tab's conversational advice (cards, position, board, price) and one-line feedback
-    review.ts           Hindsight review + showdown check (who should have won, reported-result mismatch)
-    chat.ts             Offline chat coach for Hand Review
-    quiz.ts             "Which Hand Wins?" deal generator, flop equity lesson, grading of answers and reasoning
-    tests/              Unit tests (Vitest) for all of the above
-  content/glossary.ts   Glossary entries used for hover definitions and the Learn tab
-  content/tours.ts      Tutorial-mode tour steps (each targets a data-tour="…" element)
-  friends/protocol.ts   Messages shared by the Friends tab and the game server
-  hooks/                useGame (table state machine + bot timing), useSettings (draft/save/verify),
-                        useAuth (accounts + API client), useFriends (server connection, reconnect), useOnline
-  components/           Table, cards, action bar, odds panel, chart, coach panel, hand summary,
-                        review builder, chat, quiz, learn, beginner table, glossary terms (Term.tsx),
-                        tutorial tours (Tour.tsx), ranges, friends, settings
-  styles/app.css        Card-room theme
-server/
-  index.ts              Server: static app, /api routes, WebSocket tables, timers, rate limits, persistence hooks
-  api.ts                JSON API: register, log in/out, me, profile
-  auth.ts               Accounts: scrypt password hashing, session tokens, login rate-limiting
-  db.ts                 SQLite (sql.js) store: schema, queries, atomic save to disk
-  history.ts            Saved games: players, buy-ins, events; profile totals and progression
-  room.ts               One friends' table: seats, chips, buy-ins, host rules, validation, per-player views
-  tests/                Room, accounts and history tests
-vite.config.ts          Build config, offline service-worker generator, /ws proxy for development
+src/engine/      Poker engine, odds, coach, reads, ranges, review (pure TS, unit-tested)
+src/components/  React UI
+src/hooks/       Game state, settings, accounts, Friends connection
+src/content/     Glossary and tutorial tours
+server/          Node server: API, accounts, SQLite, Friends tables
 ```
 
-### How the numbers are computed
-- **Hand evaluation:** a bit-mask/count evaluator scores the best 5 of up to 7 cards as a single comparable integer. Royal Flush is its own (top) category.
-- **Equity:** Monte Carlo simulation over unknown opponent hands and the remaining board (2,500–15,000 trials, set by *Simulation accuracy*). If every opponent's cards are known and at most two board cards are missing, every runout is enumerated exactly. The quiz's flop lesson always enumerates exactly.
-- **Read-based equity:** at the table, each opponent's actions build a weighted range. Hands are drawn from it by rejection sampling, with low weights left for bluffs and slow-plays:
-  - an open-raise uses that seat's opening chart;
-  - a re-raise means a premium hand;
-  - a normal bet means a pair or a draw;
-  - a big bet means two pair or better, top pair with a good kicker, or a bluff;
-  - a call means a pair or a draw;
-  - a check usually means a weaker hand.
-
-  In Hand Review, where opponents' actions aren't recorded, a generic *betting range* is used when you face a bet.
-- **Chance someone is ahead:** enumerates every two-card holding an opponent could have and counts those beating your current hand. For N opponents it uses 1 − (1 − p)^N.
-- **Outs:** unseen cards that improve you to a better hand category using your hole cards. Board-pairing cards and pairs below the top board card are excluded.
-- **Hand comparisons:** different hand types are ordered by the ranking list. For the same type, the explanation walks through the tie-breaks in order: pair or three-of-a-kind rank, second pair, then kickers.
-- **Starting hands:** Chen formula → Premium / Strong / Playable / Marginal / Weak.
-
-### How the coach decides
-- Pre-flop: the position charts for unopened pots and big blind defence; otherwise starting-hand tier and whether you are facing a raise.
-- Facing a bet: compares realistic equity against pot odds. Raise when well ahead; call strong draws with implied odds when slightly short.
-- No bet to you: bet for value above a threshold that scales with the number of opponents; semi-bluff strong draws; continuation-bet or bluff in the spots described above; otherwise check. Folding when checking is free is always a mistake.
-- Bet sizing: flags oversized bets and all-ins with non-premium hands, and gives the break-even fold frequency for bluffs (bet ÷ (pot + bet)).
-
-### Tests
-Tests live in `src/engine/tests/` (and `server/tests/` for the friends server) and run with `npm test`. They are TypeScript (`*.test.ts`) to match the rest of the codebase. There are 84 tests covering:
-- evaluator: all 10 categories, the Royal Flush, kickers, the wheel;
-- equity, outs and the betting-range model;
-- the betting engine: chip conservation over 1,500 simulated hands;
-- the coach;
-- the showdown check, including a regression test for A-K making a straight against Q-3;
-- hand-comparison explanations;
-- quiz generation and grading;
-- glossary integrity;
-- table positions (checked against who actually posts the blinds);
-- the beginner coach, including the 4-6 offsuit example;
-- settings clean-up, including removal of old API keys;
-- range notation and chart sizes, position-aware pre-flop advice;
-- opponent reads (a polarised big bet), read checks (exposing a bluff) and the river-bluff recommendation;
-- the friends room: hidden cards, turn order, host-only first deal, chips carrying over, busting, rebuys and leaving, timeouts, disconnects, rejoining, table limits and code cleaning;
-- side pots (short all-ins, uncalled bets) and chip conservation over 1,500 hands with uneven stacks;
-- accounts: salted password hashing, sessions (only token hashes stored), validation, duplicates, case-insensitive usernames, login rate-limiting;
-- saved history: games, buy-ins, profile totals and progression (and that results are zero-sum).
-
----
+Built with TypeScript, React 18, Vite 5, Vitest, plain CSS, `ws` and `sql.js`.
 
 ## Known limitations
-- Stacks reset to 100 big blinds every hand. Equal stacks mean there is never a side pot, so side pots are not implemented yet.
-- The coach doesn't consider stack-to-pot ratio. Opponent reads use simple rules, not a model trained on each bot's real tendencies.
+
 - Bots are simple equity-plus-personality players, not game-theory-optimal opponents.
-- Hand Review records one decision per betting round (enter the most important one) and one known opponent hand.
-- The quiz grades written reasoning with keyword checks (hand names, kickers), not full language understanding.
-- The chat coach only understands the question types it was written for (outs, pot odds, who won, what to do in a round, the nuts, equity). Free-form questions get a list of what it can answer.
-- The range charts cover the first decision before the flop (raise first in, and big blind defence vs the button); there are no charts for 3-bets or calling raises from other seats yet.
-- Live friends tables live in server memory, so a server restart ends tables in progress (finished hands are already saved). There is no chat, and there are no bots at friends' tables.
-- Accounts have no email, so there is no password reset or account deletion screen yet. The session token is kept in the browser's local storage.
-- The `sql.js` database keeps everything in memory and writes the whole file after changes. That's fine for friends and small communities; a large public deployment should move to a server database.
-- An all-in for less than a full raise reopens the betting (a simplification of the official rule).
-- At phone width, the side seats sit close to the community cards.
-
----
-
-## Iteration log
-
-### Iteration 5 — fit-to-screen tables, persistent chips, accounts and saved history (v0.5.0)
-- **No scrolling to act:**
-  - Play & Train, Beginner and Friends fit the table and action buttons in the window at every size; tested at 1440×900, 1366×768, 1024×700 and a 390×844 phone.
-  - The page is now a fixed frame (header plus a content area), the table scales to the available space, and side panels scroll on their own.
-  - The end-of-hand summary moved to the side column; the result, *Deal next hand* and *Discuss with coach* sit under the table.
-  - The coach's latest suggestion appears above the Beginner buttons, and Skip/Continue for the "why?" prompt appear under the table.
-  - On phones the tabs are one swipeable row.
-- **Friends — chips carry over:**
-  - Stacks persist from hand to hand, and the engine now supports per-seat stacks and real side pots.
-  - The scoreboard shows chips, net, hands won and buy-ins.
-- **Busting:** at 0 chips players choose to **buy back in** (logged, counts against net) or **leave the table**. Everything is shown in a table log and saved to history.
-- **Host deals first:** only the host can deal the first hand; after that anyone can deal.
-- **Backend and accounts:**
-  - The server has an SQLite database (`sql.js`), accounts with scrypt-hashed passwords, random session tokens (stored hashed), and login rate-limiting.
-  - API: `/api/register`, `/api/login`, `/api/logout`, `/api/me`, `/api/profile`.
-  - Friends requires an account and saves every game, player result and buy-in.
-- **Profile tab:** lifetime totals, a progress chart of net chips over games, and recent games with everyone's results. The header shows *Log in* or your username.
-- The offline service worker never caches `/api` responses; the dev and preview servers forward `/api` to the backend.
-- Glossary: buy-in, side pot. Tests grew from 74 to 84.
-
-### Iteration 4 — opponent reads, bluffing, ranges, friends (v0.4.0)
-- **Tutorial fix:** steps 11 and 12 of the Play & Train tour ("Right now" and "Outs") pointed at panels that only exist after the flop, so they appeared without a highlight. Tours now skip steps whose part isn't on screen, and a new post-flop tour covers "Right now", outs, opponent reads and the graph the first time you act after the flop.
-- **"All in all" → "Overall"** in the beginner coach. The glossary now only links "all-in" with a hyphen, so the phrase is never mistaken for the poker term.
-- **Opponent reads:** the coach builds a range for each opponent from their actions and explains it in words. Advice and win chance use those ranges, and big bets are explained as "very strong or a bluff". After the hand a **read check** reveals whether each bet was honest, a semi-bluff or a bluff.
-- **Bluffing opportunities** in both Play & Train and Beginner: flop continuation bets, river bluffs against an opponent who checked every round, and turn stabs. Each comes with the reasoning and break-even maths, and the beginner buttons mark the suggested bet size.
-- **Ranges tab:** solver-style pre-flop charts for every seat (approximations, clearly labelled), a raise/call/fold drill with saved score, and position-aware pre-flop advice from the coach. New glossary entries: GTO, continuation bet, under the gun, middle position, cutoff.
-- **Friends tab (online only):**
-  - create a table and share a code; 2–6 friends play the same hand;
-  - scoreboard of hands won;
-  - 45-second turn timer, reconnect to your seat;
-  - server-side dealing and validation, and cards hidden until the hand ends.
-
-  New `server/` (Node + `ws`, reusing the engine) and `npm run server`.
-- **Header status indicator removed.** It only ever showed connection status, which now lives in the Friends tab.
-- Keyboard shortcuts only act on the table you're looking at, so a hidden tab can never act.
-- Tests grew from 62 to 74.
-
-### Iteration 3 — positions, Beginner tab, tutorial mode, saved settings (v0.3.0)
-- **Positions shown on every seat:** Dealer, SB, BB, UTG, MP and CO badges with hover definitions, plus new glossary entries. Bets and last actions moved inside each seat so they no longer cover positions or the dealer button.
-- **New Beginner tab:** a simplified table (2 opponents, slower, no odds panel) where the coach talks the player through each decision in plain words. It covers what the hole cards mean, the seat, the board and the price of a call, then ends with a clear suggestion. The suggested move is marked on the buttons, there's a simple strength meter, and feedback is one line after each move. Play & Train is unchanged.
-- **Removed the optional Claude / personal API key feature:**
-  - the SDK dependency, settings fields, online chat path and prompts are gone;
-  - any key left in a browser's storage from iteration 2 is wiped on load;
-  - the app is now fully offline with no network calls.
-- **Settings save:** settings are edited as a draft with an explicit **Save changes** button. The save is verified by reading it back, with "✓ Settings saved" / "● Unsaved changes" status, a save-or-discard prompt on close, and Reset to defaults.
-- **Tutorial mode** (toggle in Settings): spotlight tours that highlight each button and panel and explain it. They cover the percentages, meter marks, pot odds, coach feedback and the win-chance graph, across every tab and Settings. Tours can be replayed, skipped or turned off from inside a tour. On phones the tour card is a bottom sheet and the page scrolls so the highlighted part stays visible.
-- Tests grew from 54 to 62.
-
-### Iteration 2 — beginner support, showdown check, hand-reading quiz (v0.2.0)
-- **Royal Flush** is now a separate hand category (`Category.RoyalFlush`, listed in `CATEGORY_NAMES`), ranked above Straight Flush everywhere: odds panel, explanations, quiz.
-- **Texas Hold'em only:** branding, copy, rules lesson and the Claude prompt state that the app covers Texas Hold'em, and explain its specific rules (two hole cards, five community cards, best five of seven, the board can play).
-- **Tests moved** to `src/engine/tests/` (kept as TypeScript to match the codebase). Tests grew from 34 to 54.
-- **Showdown check:** fixes the hand-review feedback gap reported in testing. The engine already scored A-K's straight correctly against Q-3, but the result was easy to miss and the chat assumed a loss. The coach now:
-  - shows both best-five hands;
-  - explains why one beats the other;
-  - lists what would have beaten you and whether the opponent's hand did;
-  - flags a reported result that contradicts the rules.
-
-  New "Result at the table" field in Hand Review. The table's end-of-hand summary also explains the showdown. The chat now routes "who should have won?" questions to the showdown check instead of treating them as "what should I have done?".
-- **Beginner support:**
-  - hover/tap definitions on poker terms across the app;
-  - a searchable glossary;
-  - plain-English explanations in coach feedback (Settings → *Beginner explanations*, on by default);
-  - "street" replaced by "betting round"/"round" in the UI;
-  - plainer labels for the "why?" reasons;
-  - Claude is told to avoid jargon in beginner mode.
-- **Learn tab:** Texas Hold'em rules, hand rankings with examples, an equity and pot odds lesson with a worked example, and outs and pot-odds calculators.
-- **Which Hand Wins? tab:**
-  - pick the winner from 2–4 hands, name the hand type and justify it;
-  - optional flop step teaching equity, outs and the rule of 4;
-  - practice modes for straights & flushes and for kickers & ties;
-  - feedback on your written reasoning;
-  - saved score and streaks.
-- Header no longer sticks to the top on phones, so it doesn't cover the content.
-
-### Iteration 1 — initial release (v0.1.0)
-- Project set up: React + TypeScript + Vite, Vitest, offline service worker, PWA manifest and icon.
-- Poker engine: 7-card evaluator, Monte Carlo/exact equity, betting-range model, threats, nuts, outs, starting-hand tiers, full No-Limit betting engine with blinds, raises, all-ins and showdowns, and bot opponents with four personalities.
-- Play & Train table: animated dealing, live odds panel, equity-by-street chart, hindsight reveal and per-decision grading, session stats, keyboard shortcuts.
-- Live AI coach: "why did you do that?" prompt with reason chips and free text, graded feedback with numbers, hint button.
-- Hand Review: card-picker hand builder (your cards, board, the hand that beat you, per-street actions, pot sizes and reasoning), street-by-street coach walkthrough, hindsight equity, offline chat follow-ups, example hand, draft saved locally.
-- Optional Claude coach for open-ended chat (streaming, grounded in engine numbers, falls back to the offline coach).
-- Settings: opponents, opponent style, coach mode, odds visibility, simulation accuracy, table speed, Claude key.
-- 34 unit tests covering the evaluator, equity, outs, the betting engine (chip conservation over 1,500 simulated hands), the coach and the review chat.
+- Range charts cover the first pre-flop decision only (raise first in, big blind defence).
+- The Hand Review chat answers a fixed set of question types.
+- Friends tables live in server memory; a restart ends hands in progress (finished hands are saved).
+- No password reset yet.
