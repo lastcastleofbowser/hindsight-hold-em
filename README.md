@@ -4,17 +4,18 @@ Texas Hold'em hand analytics and probability app — an offline-first No-Limit *
 
 > The app covers **Texas Hold'em only**: two private hole cards per player, five shared community cards (flop, turn, river), four betting rounds, and the best five-card hand from those seven wins.
 
-> **Current version:** Iteration 2 (v0.2.0). See the [iteration log](#iteration-log) for what changed in each iteration.
+> **Current version:** Iteration 3 (v0.3.0). See the [iteration log](#iteration-log) for what changed in each iteration.
 
 ---
 
 ## Features
 
-The app has four tabs: **Play & Train**, **Hand Review**, **Which Hand Wins?** and **Learn**.
+The app has five tabs: **Play & Train**, **Beginner**, **Hand Review**, **Which Hand Wins?** and **Learn**. Everything runs in the browser and works offline.
 
 ### 1. Play & Train (gamified table)
 - A clean poker-table UI (felt, rail, dealer button, chips) with cards dealt at random and animated onto the table.
 - Play against 1–5 bot opponents with different styles: Tight, Balanced, Loose, Aggressive, or a mixed table.
+- **Table positions** on every seat: Dealer (BTN), Small blind (SB), Big blind (BB), Under the gun (UTG), Middle position (MP) and Cutoff (CO). Hover a badge for what it means. Each seat's bet and last action sit inside the seat, so they never cover the position or dealer button.
 - **Live probabilities in every betting round (pre-flop, flop, turn, river):**
   - Win chance (equity), split into win and tie, with an "even share" marker.
   - Pot odds: the win chance you need to call, compared with what you have.
@@ -32,7 +33,7 @@ The app has four tabs: **Play & Train**, **Hand Review**, **Which Hand Wins?** a
 - Session stats: hands played, net chips, and the share of good decisions.
 - Keyboard shortcuts: `F` fold, `C` check/call, `B`/`R` bet/raise.
 
-### 2. AI Coach
+### 2. The coach
 - **Live "why?" coaching** (Settings → Coach → *Ask why*). After each action the table pauses and the coach asks why you did it. Pick one or more reasons (or type your own) and the coach:
   - grades the decision (Great / Reasonable / Questionable / Mistake);
   - shows the numbers behind it;
@@ -52,7 +53,21 @@ The app has four tabs: **Play & Train**, **Hand Review**, **Which Hand Wins?** a
 - Any table hand can be sent to the chat with **Discuss with coach**.
 - Two built-in examples: **Example: bluff** (a missed draw turned into a river bluff) and **Example: who won?** (A-K makes a straight against Q-3, reported as a loss).
 
-### 3. Which Hand Wins? (hand-reading trainer)
+### 3. Beginner (a simpler table with a talking coach)
+- The same Texas Hold'em game, simplified: two balanced opponents, a slower pace, and no odds panel or charts.
+- **Before every decision the coach talks you through it** in everyday words:
+  - what your two cards mean, e.g. *"You have a Six and a Four of different suits — 'offsuit' (written 64o). Both are low cards… This is a weak starting hand."*;
+  - what your seat means (dealer, blinds, under the gun);
+  - what you have on the board and what to watch out for (e.g. three hearts on the board);
+  - the price of a call in "times out of 10".
+
+  It ends with a clear suggestion: *"I'd fold here."*
+- The suggested button is marked **★ Coach's pick**, and every button says what it does ("Check — free, pass to the next player"). You can always choose something else.
+- A simple **hand-strength meter** (Very weak → Very strong) replaces the percentages.
+- After each move you get **one or two sentences** of feedback, and the table waits until you press Continue. At the end of the hand the coach says who won and why.
+- It uses the same recommendation engine as Play & Train, so both tabs always agree on the right move.
+
+### 4. Which Hand Wins? (hand-reading trainer)
 - Several hands (2–4 players) are dealt face up with a full board. Pick the winner (or a split pot), **name the winning hand type**, and **write a short justification** (required).
 - **Optional flop step that teaches equity:**
   - Guess who is ahead on the flop.
@@ -65,7 +80,7 @@ The app has four tabs: **Play & Train**, **Hand Review**, **Which Hand Wins?** a
   - **Kickers & ties**: the top two hands are the same type.
 - Score, current streak and best streak are saved in the browser.
 
-### 4. Learn (beginner support)
+### 5. Learn (beginner support)
 - **Texas Hold'em in two minutes:** the rules, betting rounds and how the showdown works.
 - **Hand rankings chart** from Royal Flush to High Card, with example cards and plain-English descriptions.
 - **Equity & pot odds lesson** with a worked example, an **outs calculator** (exact chance vs rule of 4/2) and a **pot odds calculator**.
@@ -74,34 +89,45 @@ The app has four tabs: **Play & Train**, **Hand Review**, **Which Hand Wins?** a
 ### Beginner-friendly everywhere
 - **Hover or tap any dotted-underlined term** (equity, outs, kicker, the nuts, pot odds, flush draw…) for a definition. Terms are auto-linked in coach feedback, chat messages, summaries and the odds panel.
 - **Beginner explanations** (Settings, on by default): every piece of coach feedback also has a plain-English version, e.g. "you'd win about 4 times out of 10; calling pays off if you win more than 3 times out of 10".
+- **Tutorial mode** (Settings, on by default): guided spotlight tours highlight each button and panel the first time it appears and explain what it does. That includes:
+  - the action buttons and bet sizing;
+  - the position badges;
+  - every part of the odds panel (the win-chance %, the meter's even-share and pot-odds marks, win/split, pot odds, threats, outs);
+  - the coach's grade, plain-English line and numbers;
+  - the win-chance-by-round graph and its hindsight line.
+
+  Tours run on every tab and in Settings. Use **Back/Next** (or the arrow keys) to move through a tour, **Skip** to leave it, **Turn off tutorial mode** to stop all tours, or the header's **Tour** button to replay the current screen's tour. Switching tutorial mode back on replays all tours.
 - Jargon has been replaced where possible. The app says "betting round" or "round" instead of the insider term "street"; the glossary explains that players call a round a street.
+
+### Settings that save
+- Settings are edited as a draft. Nothing changes until you press **Save changes**.
+- The save is confirmed by reading the stored value back, and the drawer shows **✓ Settings saved**, **● Unsaved changes**, or an error if the browser blocks storage.
+- Closing with unsaved changes asks whether to save or discard them. **Reset to defaults** is available too.
 
 ### Offline-first
 - All poker maths (hand evaluation, equity simulation, outs, nuts, coaching logic, quiz grading) runs in the browser. **No server is required.**
 - A service worker precaches the whole app after the first visit, so it works with no connection. It can be installed as an app (PWA).
-- **Optional online coach:** add an Anthropic API key in Settings and enable Claude. Open-ended chat questions then go to Claude (`claude-opus-5-5`), grounded in the engine's computed numbers. Without a key, or when offline, the built-in coach answers.
+- There is no online component and no API key. The app makes no network requests after it loads.
 
 ---
 
 ## How AI is used
 
-There are two layers, and only the second one is a large language model:
+The coach is **not a large language model**. Since iteration 3 the app has no online AI at all; the optional Claude chat from iterations 1–2 was removed.
 
-1. **The built-in coach (always on, fully offline).** This is an expert system written in TypeScript, not a trained model. It combines:
-   - exact hand evaluation;
-   - Monte Carlo simulation (thousands of random deals) to estimate equity;
-   - a modelled betting range for spots where you face a bet;
-   - poker rules of thumb (pot odds, value thresholds, starting-hand tiers).
+The built-in coach is an expert system written in TypeScript, not a trained model. It combines:
+- exact hand evaluation;
+- Monte Carlo simulation (thousands of random deals) to estimate equity;
+- a modelled betting range for spots where you face a bet;
+- poker rules of thumb (pot odds, value thresholds, starting-hand tiers).
 
-   Its "why did you do that?" replies come from matching your chosen reasons and keywords in your text against those numbers. The bots also use this engine plus personality settings. Everything runs on the user's device, needs no internet, and gives the same answer for the same spot.
-2. **Claude (optional, online only).** If a user enables it and enters their own Anthropic API key, follow-up questions in the Hand Review chat are sent to Claude together with the engine's computed facts. Claude writes free-form coaching answers but is told to treat those numbers as ground truth, so it explains the maths rather than inventing it.
+The coach's sentences are templates written in the code and filled in with these numbers. Its "why did you do that?" replies come from matching your chosen reasons and keywords in your text. The bots use the same engine plus personality settings. Everything runs on the user's device, needs no internet, and gives the same answer for the same spot.
 
 ### Will it work on other computers?
 - **Yes.** It's a static website that runs in any modern browser (Chrome, Edge, Safari, Firefox) on Windows, macOS, Linux, iOS or Android.
 - To share it, deploy `dist/` to a web host (see below) and send the link; nothing needs installing. Alternatively, another developer can clone the repo and run `npm install && npm run dev` (Node.js 18+).
 - After the first visit the service worker caches the app, so it keeps working offline on that device, and it can be installed like an app.
 - **Per-device data:** settings, saved review drafts and quiz scores live in that browser's local storage. They don't sync between computers.
-- **Claude is per user:** each person who wants it needs their own API key and an internet connection. Everything else works for everyone without a key.
 
 ---
 
@@ -134,7 +160,6 @@ The offline service worker is only registered in production builds (`npm run bui
 | **No UI framework / plain CSS** | Full control over the poker-table look; zero runtime styling dependencies. |
 | **Hand-written service worker** | Generated at build time from the bundle's file list (see `vite.config.ts`); small and dependency-free. |
 | **Vitest** | Same config and module system as Vite. |
-| **`@anthropic-ai/sdk` (lazy-loaded)** | Official SDK for the optional online coach. It is loaded only when Claude is used, so the offline app never depends on it. |
 
 ---
 
@@ -150,15 +175,17 @@ src/
     game.ts             Betting engine: blinds, betting rounds, legal actions, raises, all-ins, showdown
     bots.ts             Bot opponents (equity + personality profiles)
     coach.ts            Recommendation, decision grading, plain-English explanations, "why?" responses
+    beginnerCoach.ts    Beginner tab's conversational advice (cards, position, board, price) and one-line feedback
     review.ts           Hindsight review + showdown check (who should have won, reported-result mismatch)
     chat.ts             Offline chat coach + compact "hand facts" for the LLM
     quiz.ts             "Which Hand Wins?" deal generator, flop equity lesson, grading of answers and reasoning
     tests/              Unit tests (Vitest) for all of the above
   content/glossary.ts   Glossary entries used for hover definitions and the Learn tab
-  claude.ts             Optional Claude client (lazy SDK import, streaming, typed errors)
-  hooks/                useGame (table state machine + bot timing), useSettings, useOnline
+  content/tours.ts      Tutorial-mode tour steps (each targets a data-tour="…" element)
+  hooks/                useGame (table state machine + bot timing), useSettings (draft/save/verify), useOnline
   components/           Table, cards, action bar, odds panel, chart, coach panel, hand summary,
-                        review builder, chat, quiz, learn, glossary terms (Term.tsx), settings
+                        review builder, chat, quiz, learn, beginner table, glossary terms (Term.tsx),
+                        tutorial tours (Tour.tsx), settings
   styles/app.css        Card-room theme
 vite.config.ts          Build config + offline service-worker generator
 ```
@@ -179,7 +206,7 @@ vite.config.ts          Build config + offline service-worker generator
 - Bet sizing: flags oversized bets and all-ins with non-premium hands, and gives the break-even fold frequency for bluffs (bet ÷ (pot + bet)).
 
 ### Tests
-Tests live in `src/engine/tests/` and run with `npm test`. They are TypeScript (`*.test.ts`) to match the rest of the codebase. There are 54 tests covering:
+Tests live in `src/engine/tests/` and run with `npm test`. They are TypeScript (`*.test.ts`) to match the rest of the codebase. There are 62 tests covering:
 - evaluator: all 10 categories, the Royal Flush, kickers, the wheel;
 - equity, outs and the betting-range model;
 - the betting engine: chip conservation over 1,500 simulated hands;
@@ -187,7 +214,10 @@ Tests live in `src/engine/tests/` and run with `npm test`. They are TypeScript (
 - the showdown check, including a regression test for A-K making a straight against Q-3;
 - hand-comparison explanations;
 - quiz generation and grading;
-- glossary integrity.
+- glossary integrity;
+- table positions (checked against who actually posts the blinds);
+- the beginner coach, including the 4-6 offsuit example;
+- settings clean-up, including removal of old API keys.
 
 ---
 
@@ -197,12 +227,24 @@ Tests live in `src/engine/tests/` and run with `npm test`. They are TypeScript (
 - Bots are simple equity-plus-personality players, not game-theory-optimal opponents.
 - Hand Review records one decision per betting round (enter the most important one) and one known opponent hand.
 - The quiz grades written reasoning with keyword checks (hand names, kickers), not full language understanding.
-- The optional Claude API key is stored in the browser's localStorage and sent directly to Anthropic. This is fine for a personal trainer. A shared or hosted multi-user deployment should proxy requests through a backend instead.
+- The chat coach only understands the question types it was written for (outs, pot odds, who won, what to do in a round, the nuts, equity). Free-form questions get a list of what it can answer.
+- Position badges are informational: the coach's advice mentions your seat in the Beginner tab, but recommendations don't yet change by position.
 - At phone width, the side seats sit close to the community cards.
 
 ---
 
 ## Iteration log
+
+### Iteration 3 — positions, Beginner tab, tutorial mode, saved settings (v0.3.0)
+- **Positions shown on every seat:** Dealer, SB, BB, UTG, MP and CO badges with hover definitions, plus new glossary entries. Bets and last actions moved inside each seat so they no longer cover positions or the dealer button.
+- **New Beginner tab:** a simplified table (2 opponents, slower, no odds panel) where the coach talks the player through each decision in plain words. It covers what the hole cards mean, the seat, the board and the price of a call, then ends with a clear suggestion. The suggested move is marked on the buttons, there's a simple strength meter, and feedback is one line after each move. Play & Train is unchanged.
+- **Removed the optional Claude / personal API key feature:**
+  - the SDK dependency, settings fields, online chat path and prompts are gone;
+  - any key left in a browser's storage from iteration 2 is wiped on load;
+  - the app is now fully offline with no network calls.
+- **Settings save:** settings are edited as a draft with an explicit **Save changes** button. The save is verified by reading it back, with "✓ Settings saved" / "● Unsaved changes" status, a save-or-discard prompt on close, and Reset to defaults.
+- **Tutorial mode** (toggle in Settings): spotlight tours that highlight each button and panel and explain it. They cover the percentages, meter marks, pot odds, coach feedback and the win-chance graph, across every tab and Settings. Tours can be replayed, skipped or turned off from inside a tour. On phones the tour card is a bottom sheet and the page scrolls so the highlighted part stays visible.
+- Tests grew from 54 to 62.
 
 ### Iteration 2 — beginner support, showdown check, hand-reading quiz (v0.2.0)
 - **Royal Flush** is now a separate hand category (`Category.RoyalFlush`, listed in `CATEGORY_NAMES`), ranked above Straight Flush everywhere: odds panel, explanations, quiz.

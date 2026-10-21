@@ -92,6 +92,38 @@ export const potSize = (s: GameState): number => s.players.reduce((n, p) => n + 
 
 export const activePlayers = (s: GameState): Player[] => s.players.filter((p) => !p.folded);
 
+// ---------------------------------------------------------------------------
+// Table positions
+// ---------------------------------------------------------------------------
+
+export type Position = 'BTN' | 'BTN/SB' | 'SB' | 'BB' | 'UTG' | 'MP' | 'CO';
+
+/** Positions clockwise from the dealer button, by number of players. */
+const POSITIONS_BY_SIZE: Record<number, Position[]> = {
+  2: ['BTN/SB', 'BB'],
+  3: ['BTN', 'SB', 'BB'],
+  4: ['BTN', 'SB', 'BB', 'UTG'],
+  5: ['BTN', 'SB', 'BB', 'UTG', 'CO'],
+  6: ['BTN', 'SB', 'BB', 'UTG', 'MP', 'CO'],
+};
+
+export const POSITION_NAMES: Record<Position, string> = {
+  BTN: 'Dealer (button)',
+  'BTN/SB': 'Dealer & small blind',
+  SB: 'Small blind',
+  BB: 'Big blind',
+  UTG: 'Under the gun',
+  MP: 'Middle position',
+  CO: 'Cutoff',
+};
+
+/** A seat's position given where the dealer button is. */
+export function positionOf(seat: number, buttonIndex: number, players: number): Position {
+  const order = POSITIONS_BY_SIZE[players];
+  if (!order) throw new Error(`Unsupported table size: ${players}`);
+  return order[(seat - buttonIndex + players) % players];
+}
+
 const canAct = (p: Player) => !p.folded && !p.allIn;
 
 function nextIndex(s: GameState, from: number, pred: (p: Player) => boolean): number {

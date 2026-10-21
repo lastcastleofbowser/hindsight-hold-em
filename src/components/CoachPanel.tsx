@@ -35,7 +35,7 @@ export function CoachPanel({ mode, coach, decisions, heroContext, holdTable, beg
   const decision = coach ? decisions[coach.decisionIndex] : undefined;
 
   return (
-    <section className="panel" aria-label="AI coach" aria-live="polite">
+    <section className="panel" aria-label="Coach" aria-live="polite" data-tour="coach-panel">
       <h2>
         Coach
         {heroContext && !coach?.awaitingWhy && (
@@ -68,7 +68,7 @@ export function CoachPanel({ mode, coach, decisions, heroContext, holdTable, beg
       )}
 
       {holdTable && coach && !coach.awaitingWhy && (
-        <div className="row-btns">
+        <div className="row-btns" data-tour="continue">
           <button className="btn primary" onClick={onResume} autoFocus>
             Continue
           </button>
@@ -93,7 +93,7 @@ function WhyPrompt({ action, street, onAnswer }: { action: string; street: strin
   const [note, setNote] = useState('');
   const toggle = (t: ReasonTag) => setTags((cur) => (cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]));
   return (
-    <div className="coach-card">
+    <div className="coach-card" data-tour="why-prompt">
       <div className="coach-q">
         Why did you {ACTION_VERBS[action] ?? action} on the {street.toLowerCase()}?
       </div>
@@ -147,14 +147,20 @@ export function FeedbackCard({
   return (
     <div className="coach-card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-        <span className={`verdict ${feedback.verdict}`}>{VERDICT_LABELS[feedback.verdict]}</span>
+        <span className={`verdict ${feedback.verdict}`} data-tour="verdict">
+          {VERDICT_LABELS[feedback.verdict]}
+        </span>
         {title && <span className="small muted">{title}</span>}
       </div>
       <p className="feedback-headline">
         <TermText text={feedback.headline} />
       </p>
-      {beginner && <p className="plain">💡 In plain English: {feedback.simple}</p>}
-      <ul className="points">
+      {beginner && (
+        <p className="plain" data-tour="plain-english">
+          💡 In plain English: {feedback.simple}
+        </p>
+      )}
+      <ul className="points" data-tour="feedback-points">
         {feedback.points.map((p) => (
           <li key={p}>
             <TermText text={p} />
@@ -162,7 +168,7 @@ export function FeedbackCard({
         ))}
       </ul>
       {replies.length > 0 && (
-        <div className="reply">
+        <div className="reply" data-tour="reason-reply">
           {note.trim() && (
             <div className="small muted" style={{ marginBottom: 4 }}>
               You said: “{note.trim()}”

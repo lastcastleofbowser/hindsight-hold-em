@@ -12,8 +12,7 @@ export interface ChatOptions {
 
 /**
  * The offline coach. It answers from the numbers the engine computed, so it
- * works with no network. When Claude is enabled the same facts are passed to
- * the model (see `handFacts`) so its answers stay grounded in real maths.
+ * works with no network, and every answer is grounded in the engine's maths.
  */
 
 const verdictIcon = { great: '✅', good: '👍', questionable: '⚠️', mistake: '❌' } as const;
@@ -164,7 +163,7 @@ export function offlineReply(question: string, review: HandReview, opts: ChatOpt
     return scoped.map((r) => describeDecision(r, review.decisions.indexOf(r), opts)).join('\n\n');
   }
 
-  return "I'm the offline coach, so I answer from the hand's numbers. Try asking about **outs**, **pot odds**, **what you should have done** in a round, **the nuts**, **your equity**, or **who should have won**. For open-ended discussion, add a Claude API key in Settings and go online.";
+  return "I'm the offline coach, so I answer from the hand's numbers. Try asking about **outs**, **pot odds**, **what you should have done** in a round, **the nuts**, **your equity**, or **who should have won**. You can also name a round, e.g. *“what happened on the flop?”*";
 }
 
 function resultReply(review: HandReview): string {
@@ -183,38 +182,4 @@ function resultReply(review: HandReview): string {
         ? "You didn't lose this one — your hand was the winner."
         : 'Neither hand was better, so the pot is shared.';
   return `${showdownCheck(sd)}\n\nYour true equity against their actual cards went: ${swings || 'n/a'}.\n\n${verdict}`;
-}
-
-/** Compact, factual description of the hand for the LLM coach. */
-export function handFacts(review: HandReview): string {
-  const lines: string[] = [];
-  for (const r of review.decisions) {
-    const { ctx, action, amountTo, note } = r.decision;
-    lines.push(
-      [
-        `Betting round: ${STREET_LABELS[ctx.street]}`,
-        `Hero hole cards: ${cardsLabel(ctx.hole)} (${ctx.start.notation}, ${ctx.start.tier})`,
-        `Board: ${ctx.board.length ? cardsLabel(ctx.board) : '(none)'}`,
-        `Opponents in hand: ${ctx.opponents}; pot ${ctx.pot}; to call ${ctx.toCall}`,
-        `Hero action: ${action}${amountTo !== undefined ? ` to ${amountTo}` : ''}`,
-        `Hero's reasoning: ${note.trim() || '(not given)'}`,
-        `Equity vs random hands: ${pct(ctx.equity.equity)}; realistic equity: ${pct(realisticEquity(ctx))}; required by pot odds: ${pct(requiredEquity(ctx.toCall, ctx.pot))}`,
-        ctx.threats ? `Hero's made hand: ${ctx.threats.hero.name}; P(someone ahead now): ${pct(ctx.threats.pBeatAny)}` : '',
-        ctx.outs ? `Outs: ${ctx.outs.total} (${ctx.outs.groups.map((g) => `${g.cards.length} to ${g.name}`).join(', ') || 'none'}), ${pct(ctx.outs.hitByRiver)} by river` : '',
-        ctx.nuts ? `The nuts: ${ctx.nuts.name}` : '',
-        `Engine recommendation: ${r.feedback.recommendation.move} — ${r.feedback.recommendation.why} (verdict on hero: ${r.feedback.verdict})`,
-        r.hindsightEquity !== null ? `Hindsight equity vs actual opponent cards: ${pct(r.hindsightEquity)}` : '',
-      ]
-        .filter(Boolean)
-        .join('\n'),
-    );
-  }
-  if (review.showdown) {
-    const sd = review.showdown;
-    lines.push(
-      `Showdown (by the rules): hero ${sd.hero.name} [${cardsLabel(orderBest5(sd.hero))}]; ${sd.villains.map((v) => `opponent ${cardsLabel(v.hole)} ${v.hand.name} [${cardsLabel(orderBest5(v.hand))}]`).join('; ')}; hero ${sd.outcome}. ${sd.explanation}`,
-      `Player-reported result: ${sd.reported}${sd.mismatch ? ' (DISAGREES with the rules — point this out)' : ''}`,
-    );
-  }
-  return lines.join('\n\n');
 }

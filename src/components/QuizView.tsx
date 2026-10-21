@@ -14,6 +14,7 @@ import {
 } from '../engine/quiz';
 import { MiniCards, PlayingCard } from './PlayingCard';
 import { G, TermText } from './Term';
+import { useAutoTour } from './Tour';
 
 type Stage = 'flop' | 'river' | 'result';
 
@@ -38,7 +39,7 @@ function loadScore(): Score {
   return { played: 0, correct: 0, streak: 0, best: 0 };
 }
 
-export function QuizView() {
+export function QuizView({ active }: { active: boolean }) {
   const [players, setPlayers] = useState(2);
   const [focus, setFocus] = useState<QuizFocus>('mixed');
   const [teachEquity, setTeachEquity] = useState(true);
@@ -85,13 +86,16 @@ export function QuizView() {
     });
   };
 
+  useAutoTour('quiz', active);
+  useAutoTour('quiz-flop', active && stage === 'flop' && flopGuess !== null);
+
   const visibleBoard = stage === 'flop' ? deal.board.slice(0, 3) : deal.board;
   const winningCards = new Set(stage === 'result' ? deal.winners.flatMap((w) => deal.results[w].best5) : []);
   const reasonOk = reason.trim().length >= MIN_REASON;
 
   return (
     <div className="quiz-layout">
-      <section className="panel quiz-controls" aria-label="Quiz settings">
+      <section className="panel quiz-controls" aria-label="Quiz settings" data-tour="quiz-controls">
         <h2>
           Which hand wins?
           <span className="small muted" style={{ textTransform: 'none', letterSpacing: 0 }}>
@@ -140,7 +144,7 @@ export function QuizView() {
         </div>
       </section>
 
-      <section className="panel quiz-table" aria-label="Cards">
+      <section className="panel quiz-table" aria-label="Cards" data-tour="quiz-cards">
         <div className="quiz-board">
           <span className="label">Board</span>
           <div className="board-cards">
@@ -190,7 +194,7 @@ export function QuizView() {
         </div>
       </section>
 
-      <section className="panel quiz-question" aria-live="polite">
+      <section className="panel quiz-question" aria-live="polite" data-tour="quiz-question">
         {stage === 'flop' && <FlopStep deal={deal} guess={flopGuess} onGuess={setFlopGuess} onContinue={() => setStage('river')} />}
 
         {stage === 'river' && (
@@ -306,7 +310,7 @@ function FlopStep({
           <h3 className="small" style={{ margin: '14px 0 6px' }}>
             But being ahead now isn't the same as winning. Each player's <G term="Equity">equity</G> (chance to win by the river):
           </h3>
-          <div className="bars">
+          <div className="bars" data-tour="quiz-equity">
             {flop.equity.map((e, i) => (
               <div className="bar-row" key={i}>
                 <span>{PLAYER_LABELS[i]}</span>

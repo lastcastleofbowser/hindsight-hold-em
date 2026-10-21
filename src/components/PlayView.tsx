@@ -8,16 +8,25 @@ import { HandSummary } from './HandSummary';
 import { OddsPanel } from './OddsPanel';
 import { PokerTable } from './PokerTable';
 import { TermText } from './Term';
+import { useAutoTour } from './Tour';
 
 interface Props {
   settings: Settings;
+  /** True while this tab is on screen (tutorial tours only run then). */
+  active: boolean;
   onDiscuss: (review: HandReview, handNumber: number) => void;
 }
 
-export function PlayView({ settings, onDiscuss }: Props) {
+export function PlayView({ settings, active, onDiscuss }: Props) {
   const g = useGame(settings);
+  const showOddsPanel = settings.showOdds || !!g.game?.finished;
+  useAutoTour('play-intro', active && !g.game);
+  useAutoTour('play-decision', active && g.heroToAct && !g.holdTable && showOddsPanel);
+  useAutoTour('play-why', active && !!g.coach?.awaitingWhy);
+  useAutoTour('play-feedback', active && !!g.coach?.feedback && !g.game?.finished);
+  useAutoTour('play-summary', active && !!g.game?.finished && !!g.review);
   const { game, hero, analysis, review } = g;
-  const showOdds = settings.showOdds || !!game?.finished;
+  const showOdds = showOddsPanel;
   const accuracy = g.session.verdicts.great + g.session.verdicts.good;
   const graded = accuracy + g.session.verdicts.questionable + g.session.verdicts.mistake;
 
@@ -29,7 +38,7 @@ export function PlayView({ settings, onDiscuss }: Props) {
           Play No-Limit <TermText text="Texas Hold'em" /> against bots with live win chances. After every move the coach asks <i>why</i> — then shows where your
           logic held up, and what the cards really were. New to the game? Start with the <b>Learn</b> tab, and hover over any dotted-underlined word for a definition.
         </p>
-        <button className="btn primary" onClick={g.dealNext}>
+        <button className="btn primary" onClick={g.dealNext} data-tour="deal-button">
           Deal me in
         </button>
       </div>
@@ -41,7 +50,7 @@ export function PlayView({ settings, onDiscuss }: Props) {
   return (
     <div className="play-layout">
       <div>
-        <div className="session-bar" aria-label="Session stats">
+        <div className="session-bar" aria-label="Session stats" data-tour="session-stats">
           <span className="stat">
             Hand <b>#{game.handNumber}</b>
           </span>

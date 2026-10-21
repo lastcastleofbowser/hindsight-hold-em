@@ -190,7 +190,7 @@ export function ReviewBuilder({ onAnalyse, iterations }: Props) {
     <section className="panel" aria-label="Recreate a hand">
       <h2>
         Recreate a hand
-        <span style={{ display: 'flex', gap: 6 }}>
+        <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }} data-tour="review-examples">
           <button className="chip-btn" onClick={() => { setDraft(exampleDraft()); setActive(null); }}>
             Example: bluff
           </button>
@@ -206,7 +206,7 @@ export function ReviewBuilder({ onAnalyse, iterations }: Props) {
         Pick a slot, then a card. Record what you did in each betting round and why — the coach will walk through your logic and show what beat you.
       </p>
 
-      <div className="slot-groups">
+      <div className="slot-groups" data-tour="review-slots">
         <div className="slot-group">
           <span className="label">Your hand</span>
           <div className="slots">{(['hole-0', 'hole-1'] as SlotId[]).map(slot)}</div>
@@ -270,7 +270,7 @@ export function ReviewBuilder({ onAnalyse, iterations }: Props) {
           Your stack (big blinds)
           <input type="number" min={1} step={1} value={draft.stack} onChange={(e) => setDraft((d) => ({ ...d, stack: Number(e.target.value) }))} />
         </label>
-        <label className="field">
+        <label className="field" data-tour="review-result-field">
           Result at the table
           <select value={draft.reported} onChange={(e) => setDraft((d) => ({ ...d, reported: e.target.value as ReportedResult }))}>
             <option value="unknown">Not sure / didn't see</option>
@@ -284,7 +284,7 @@ export function ReviewBuilder({ onAnalyse, iterations }: Props) {
         All chip amounts are in big blinds. With the full board and the opponent's cards, the coach checks who <i>should</i> have won.
       </p>
 
-      <div className="street-rows">
+      <div className="street-rows" data-tour="review-rounds">
         {STREETS.map((s) => {
           const st = draft.streets[s];
           const ready = boardCount >= BOARD_NEEDED[s];
@@ -340,7 +340,7 @@ export function ReviewBuilder({ onAnalyse, iterations }: Props) {
 
       {error && <div className="error" role="alert">{error}</div>}
       <div className="row-btns">
-        <button className="btn primary" onClick={analyse}>
+        <button className="btn primary" onClick={analyse} data-tour="review-analyse">
           Analyse with coach
         </button>
       </div>

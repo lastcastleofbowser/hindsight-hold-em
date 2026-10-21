@@ -28,7 +28,7 @@ export function HandSummary({ game, review, beginner, onNext, onDiscuss }: Props
   return (
     <section className="panel summary" aria-label="Hand summary">
       <div className="summary-head">
-        <div>
+        <div data-tour="summary-result">
           <div className={`result-big ${net > 0 ? 'win' : net < 0 ? 'loss' : ''}`}>
             {net > 0 ? `+${net}` : net} chips
           </div>
@@ -39,18 +39,18 @@ export function HandSummary({ game, review, beginner, onNext, onDiscuss }: Props
         </div>
         <div className="row-btns" style={{ marginTop: 0 }}>
           {review.decisions.length > 0 && (
-            <button className="btn ghost" onClick={onDiscuss}>
+            <button className="btn ghost" onClick={onDiscuss} data-tour="discuss">
               Discuss with coach
             </button>
           )}
-          <button className="btn primary" onClick={onNext} autoFocus>
+          <button className="btn primary" onClick={onNext} autoFocus data-tour="next-hand">
             Deal next hand
           </button>
         </div>
       </div>
 
       {sd && (
-        <div className="section showdown-check">
+        <div className="section showdown-check" data-tour="showdown-check">
           <h3>
             <TermText text="Showdown" /> — why this result?
           </h3>
@@ -78,7 +78,7 @@ export function HandSummary({ game, review, beginner, onNext, onDiscuss }: Props
         </ul>
       )}
 
-      <div className="section">
+      <div className="section" data-tour="hindsight-cards">
         <h3>Hindsight — what everyone held</h3>
         <div className="small" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px' }}>
           {game.players
@@ -92,7 +92,7 @@ export function HandSummary({ game, review, beginner, onNext, onDiscuss }: Props
       </div>
 
       {review.decisions.length > 0 && (
-        <div className="section">
+        <div className="section" data-tour="decision-list">
           <h3>Your decisions</h3>
           <ol className="decision-list">
             {review.decisions.map((r, i) => (

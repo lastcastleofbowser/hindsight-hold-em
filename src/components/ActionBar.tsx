@@ -41,7 +41,7 @@ export function ActionBar({ game, onAction }: Props) {
 
   const allIn = to >= legal.maxTo;
   return (
-    <div className="action-bar">
+    <div className="action-bar" data-tour="action-bar">
       {aggressive && (
         <div className="sizing">
           {presets.map((p) => (

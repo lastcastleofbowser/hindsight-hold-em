@@ -36,7 +36,7 @@ export function OddsPanel({ analysis, toCall, pot, timeline, hindsight, heroFold
         <AnalysisBody analysis={analysis} toCall={toCall} pot={pot} />
       )}
       {(timeline.length > 0 || hindsight.length > 0) && (
-        <div className="section">
+        <div className="section" data-tour="chart">
           <h3>Win chance by round</h3>
           <EquityChart points={timeline} hindsight={hindsight} />
         </div>
@@ -58,18 +58,18 @@ function AnalysisBody({ analysis, toCall, pot }: { analysis: HandAnalysis; toCal
 
   return (
     <>
-      <div className="equity-hero">
+      <div className="equity-hero" data-tour="equity">
         <span className="big">{pct(equity.equity)}</span>
         <span className="muted small">
           chance to win the pot (<G term="Equity">equity</G>){equity.exact ? '' : ` · ${equity.iterations.toLocaleString()} simulated deals`}
         </span>
       </div>
-      <div className="meter" aria-hidden>
+      <div className="meter" aria-hidden data-tour="meter">
         <span style={{ width: pct(equity.equity, 1) }} />
         <i className="tick" style={{ left: pct(fs, 1) }} title="Even share" />
         {toCall > 0 && <i className="tick" style={{ left: pct(need, 1), background: 'var(--questionable)' }} title="Needed to call" />}
       </div>
-      <dl className="kv">
+      <dl className="kv" data-tour="odds-rows">
         <dt>Win outright / split</dt>
         <dd>
           {pct(equity.win)} / {pct(equity.tie)}
@@ -101,7 +101,7 @@ function AnalysisBody({ analysis, toCall, pot }: { analysis: HandAnalysis; toCal
       )}
 
       {threats && (
-        <div className="section">
+        <div className="section" data-tour="right-now">
           <h3>Right now</h3>
           <div>
             You have <b>{threats.hero.name}</b>
@@ -143,7 +143,7 @@ function AnalysisBody({ analysis, toCall, pot }: { analysis: HandAnalysis; toCal
       )}
 
       {outs && outs.total > 0 && (
-        <div className="section">
+        <div className="section" data-tour="outs">
           <h3>
             <G term="Outs">Outs</G>: {outs.total} · {pct(outs.hitNextCard)} next card{outs.hitByRiver !== outs.hitNextCard ? ` · ${pct(outs.hitByRiver)} by river` : ''}
           </h3>
@@ -156,7 +156,7 @@ function AnalysisBody({ analysis, toCall, pot }: { analysis: HandAnalysis; toCal
       )}
 
       {finals.length > 0 && (
-        <div className="section">
+        <div className="section" data-tour="final-hand">
           <h3>Your final hand by the river</h3>
           <div className="bars">
             {finals.map(({ cat, p }) => (

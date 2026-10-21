@@ -19,7 +19,7 @@ function hitChance(outs: number, cardsToCome: 1 | 2, unseen: number): number {
 export function LearnView() {
   return (
     <div className="learn-layout">
-      <nav className="panel learn-nav" aria-label="Learn sections">
+      <nav className="panel learn-nav" aria-label="Learn sections" data-tour="learn-nav">
         <a href="#rules">Texas Hold'em rules</a>
         <a href="#rankings">Hand rankings</a>
         <a href="#equity">Equity &amp; pot odds</a>

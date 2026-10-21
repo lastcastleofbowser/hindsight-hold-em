@@ -132,7 +132,7 @@ main { padding: 16px; max-width: 1440px; margin: 0 auto; }
 .last-action.fold { color: var(--ink-3); }
 .last-action.aggressive { color: var(--gold); }
 .dealer-btn { width: 20px; height: 20px; border-radius: 50%; background: #fff; color: #111; font-size: 11px; font-weight: 900; display: inline-grid; place-items: center; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5); }
-.bet-chips { position: absolute; transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; background: rgba(0, 0, 0, 0.35); padding: 2px 8px 2px 3px; border-radius: 999px; }
+.bet-chips { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; background: rgba(0, 0, 0, 0.35); padding: 2px 8px 2px 3px; border-radius: 999px; }
 .chip { width: 16px; height: 16px; border-radius: 50%; background: radial-gradient(circle, #fff 0 28%, var(--gold) 30% 62%, #fff 64% 70%, var(--gold) 72%); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); }
 .hand-label { font-size: 11px; font-weight: 700; color: var(--great); background: rgba(0, 0, 0, 0.5); padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
 
@@ -396,3 +396,59 @@ textarea { resize: vertical; min-height: 64px; }
 .glossary dt { font-weight: 800; color: var(--gold); }
 .glossary dd { margin: 2px 0 0; font-size: 13.5px; color: var(--ink-2); }
 @media (max-width: 640px) { .app-header { position: static; } }
+
+/* ---------- Settings save bar (iteration 3) ---------- */
+.save-bar { position: sticky; bottom: calc(-20px - env(safe-area-inset-bottom, 0px)); margin: 4px -20px -20px; padding: 14px 20px calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--bg-2); border-top: 1px solid var(--line-strong); display: flex; flex-direction: column; gap: 10px; }
+.save-status { font-size: 13px; font-weight: 700; min-height: 18px; }
+.save-status .saved { color: var(--great); }
+.save-status .unsaved { color: var(--questionable); }
+.save-status .save-error { color: var(--mistake); }
+
+/* ---------- Seat layout & positions (iteration 3) ---------- */
+.seat { z-index: 2; }
+.seat.to-act { z-index: 3; }
+.nameplate .stack::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--gold); margin-right: 4px; vertical-align: 0; }
+.position-row { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 2px; }
+.position-pill { font-size: 10.5px; font-weight: 800; letter-spacing: 0.4px; padding: 1px 7px; border-radius: 999px; background: rgba(255, 255, 255, 0.1); color: var(--ink); white-space: nowrap; }
+.position-pill .term { border-bottom-color: transparent; }
+.position-pill.pos-BTN, .position-pill.pos-BTN-SB { background: #f2f2f2; color: #111; }
+.position-pill.pos-SB, .position-pill.pos-BB { background: rgba(91, 192, 222, 0.25); color: #bfe9f7; }
+.position-pill.pos-UTG { background: rgba(239, 93, 93, 0.22); color: #ffc4c4; }
+.seat-status { display: flex; gap: 6px; align-items: center; justify-content: center; flex-wrap: wrap; min-height: 22px; }
+
+/* ---------- Tutorial tours (iteration 3) ---------- */
+.tour-root { position: fixed; inset: 0; z-index: 90; }
+.tour-blocker { position: fixed; inset: 0; }
+.tour-blocker.dim { background: rgba(0, 0, 0, 0.65); }
+.tour-spotlight { position: fixed; border-radius: 14px; border: 2px solid var(--gold); box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.65), 0 0 24px rgba(231, 185, 76, 0.5); pointer-events: none; transition: top 0.25s, left 0.25s, width 0.25s, height 0.25s; }
+.tour-card { position: fixed; background: var(--panel); border: 1px solid var(--gold); border-radius: 14px; padding: 16px; box-shadow: var(--shadow); outline: none; }
+.tour-card h3 { margin: 4px 0 6px; font-size: 17px; }
+.tour-card p { margin: 0 0 12px; color: var(--ink-2); font-size: 14px; }
+.tour-progress { font-size: 11px; text-transform: uppercase; letter-spacing: 0.7px; color: var(--gold); font-weight: 800; }
+.tour-actions { display: flex; gap: 8px; }
+.tour-actions .btn { padding: 9px 14px; min-width: 0; }
+.tour-links { display: flex; justify-content: space-between; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.link-btn { background: none; border: 0; padding: 0; color: var(--ink-3); font-size: 12.5px; text-decoration: underline; }
+.link-btn:hover { color: var(--ink); }
+.term-tip { z-index: 120; }
+
+/* ---------- Beginner tab (iteration 3) ---------- */
+.beginner-actions .btn { display: flex; flex-direction: column; align-items: center; gap: 2px; position: relative; }
+.beginner-actions .btn small { font-weight: 500; font-size: 11.5px; opacity: 0.8; }
+.beginner-actions .btn.suggested { box-shadow: 0 0 0 3px var(--great); }
+.beginner-actions .btn.suggested::after { content: '★ Coach\'s pick'; position: absolute; top: -10px; right: 8px; background: var(--great); color: #062b16; font-size: 10.5px; font-weight: 800; padding: 1px 8px; border-radius: 999px; }
+.strength-meter { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.strength-meter span { height: 12px; border-radius: 4px; background: rgba(255, 255, 255, 0.08); }
+.strength-meter span.on.l0, .strength-meter span.on.l1 { background: var(--mistake); }
+.strength-meter span.on.l2 { background: var(--questionable); }
+.strength-meter span.on.l3, .strength-meter span.on.l4 { background: var(--great); }
+.strength-label { margin-top: 6px; font-weight: 800; font-size: 18px; }
+.coach-log { display: flex; flex-direction: column; gap: 10px; max-height: min(62vh, 640px); overflow-y: auto; padding-right: 4px; }
+.talk { background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; opacity: 0.7; }
+.talk.latest { opacity: 1; border-color: rgba(231, 185, 76, 0.5); }
+.talk p { margin: 0 0 6px; font-size: 14px; }
+.talk p:last-child { margin-bottom: 0; }
+.talk-title { font-weight: 800; font-size: 16px; margin-bottom: 6px; color: var(--gold); }
+.talk.feedback { border-left: 3px solid var(--good); }
+.talk.summary .talk-title { color: var(--great); }
+@media (max-width: 560px) { body.tour-open { padding-bottom: 70vh; } }

@@ -65,7 +65,12 @@ function seatsFor(settings: Settings): SeatConfig[] {
   return seats;
 }
 
-export function useGame(settings: Settings) {
+export interface GameOptions {
+  /** Grade each action and hold the table until resume() — used by the Beginner tab. */
+  pauseAfterAction?: boolean;
+}
+
+export function useGame(settings: Settings, options: GameOptions = {}) {
   const [game, setGame] = useState<GameState | null>(null);
   const [decisions, setDecisions] = useState<Decision[]>([]);
   const [coach, setCoach] = useState<CoachState | null>(null);
@@ -170,11 +175,12 @@ export function useGame(settings: Settings) {
       if (settings.coachMode === 'ask') {
         setCoach({ decisionIndex: index, awaitingWhy: true, feedback: null, replies: [] });
         setHoldTable(true);
-      } else if (settings.coachMode === 'feedback') {
+      } else if (settings.coachMode === 'feedback' || options.pauseAfterAction) {
         setCoach({ decisionIndex: index, awaitingWhy: false, feedback: evaluateDecision(heroContext, logged.type, logged.to), replies: [] });
+        if (options.pauseAfterAction && !next.finished) setHoldTable(true);
       }
     },
-    [game, heroContext, decisions.length, settings.coachMode],
+    [game, heroContext, decisions.length, settings.coachMode, options.pauseAfterAction],
   );
 
   const answerWhy = useCallback(
