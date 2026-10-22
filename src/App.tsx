@@ -43,11 +43,14 @@ export default function App() {
 }
 
 function Shell({ settings, save }: { settings: Settings; save: (next: Settings) => SaveResult }) {
-  const [tab, setTab] = useState<Tab>('play');
+  const [tab, setTab] = useState<Tab>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.has('reset') || params.has('verify') ? 'profile' : 'play';
+  });
   const [showSettings, setShowSettings] = useState(false);
   const [review, setReview] = useState<{ data: HandReview; origin: string } | null>(null);
   const tour = useTour();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const header = useRef<HTMLElement>(null);
 
   useAutoTour('review', tab === 'review');
@@ -85,9 +88,7 @@ function Shell({ settings, save }: { settings: Settings; save: (next: Settings) 
         </nav>
         <BurgerMenu tab={tab} onSelect={setTab} onTour={tour.enabled ? tour.replay : undefined} />
         <div className="header-right">
-          <button className="icon-btn" onClick={() => setTab('profile')} title={user ? 'Your profile and saved games' : 'Log in or create an account'}>
-            {user ? user.username : 'Log in'}
-          </button>
+          <AccountMenu user={user} onProfile={() => setTab('profile')} onLogout={() => void logout()} />
           <button className="icon-btn" onClick={() => setShowSettings(true)} data-tour="settings-button">
             Settings
           </button>
@@ -128,6 +129,45 @@ function Shell({ settings, save }: { settings: Settings; save: (next: Settings) 
       </main>
 
       {showSettings && <SettingsDrawer settings={settings} save={save} onClose={() => setShowSettings(false)} />}
+    </div>
+  );
+}
+
+function AccountMenu({ user, onProfile, onLogout }: { user: { username: string } | null; onProfile: () => void; onLogout: () => void }) {
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (e: PointerEvent) => {
+      if (!root.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  if (!user) {
+    return <button className="icon-btn" onClick={onProfile} title="Log in or create an account">Log in</button>;
+  }
+
+  return (
+    <div className="account-menu" ref={root}>
+      <button className="icon-btn" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((value) => !value)} title="Account options">
+        {user.username} <span aria-hidden="true">⌄</span>
+      </button>
+      {open && (
+        <div className="burger-menu" role="menu">
+          <button role="menuitem" onClick={() => { onProfile(); setOpen(false); }}>Profile</button>
+          <button role="menuitem" onClick={() => { onLogout(); setOpen(false); }}>Log out</button>
+        </div>
+      )}
     </div>
   );
 }

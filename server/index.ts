@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { extname, join, normalize, resolve, sep } from 'node:path';
@@ -8,6 +9,7 @@ import { handleApi } from './api';
 import { Auth, type User } from './auth';
 import { Store } from './db';
 import { History } from './history';
+import { createPasswordResetDelivery } from './mailer';
 import { BUY_IN, Room, RoomError, TURN_SECONDS, makeCode } from './room';
 
 /**
@@ -24,13 +26,16 @@ const HERE = fileURLToPath(new URL('.', import.meta.url));
 const PORT = Number(process.env.PORT ?? 8787);
 const DIST = resolve(HERE, '../dist');
 const DATA_DIR = resolve(process.env.DATA_DIR ?? resolve(HERE, '../data'));
+const dataKeyHex = process.env.DATA_ENCRYPTION_KEY ?? '';
+if (!/^[0-9a-f]{64}$/i.test(dataKeyHex)) throw new Error('Set DATA_ENCRYPTION_KEY to a persistent 32-byte key encoded as 64 hex characters.');
+const { appUrl, mailer } = createPasswordResetDelivery();
 const MAX_ROOMS = 500;
 const MAX_MESSAGE_BYTES = 4096;
 const MAX_MESSAGES_PER_SECOND = 20;
 const ROOM_IDLE_MS = 30 * 60 * 1000;
 
-const store = await Store.open(join(DATA_DIR, 'hindsight.sqlite'));
-const auth = new Auth(store);
+const store = await Store.open(join(DATA_DIR, 'hindsight.sqlite'), Buffer.from(dataKeyHex, 'hex'));
+const auth = new Auth(store, mailer, appUrl);
 const history = new History(store);
 history.closeStaleGames();
 

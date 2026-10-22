@@ -75,6 +75,8 @@ export type ServerMessage =
 export interface AccountUser {
   id: number;
   username: string;
+  email: string | null;
+  emailVerified: boolean;
 }
 
 export interface AuthResponse {

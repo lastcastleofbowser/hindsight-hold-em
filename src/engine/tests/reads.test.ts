@@ -42,12 +42,16 @@ describe('range charts', () => {
   });
 
   it('drives position-aware pre-flop advice', () => {
-    const ctx = (hole: string, position: 'UTG' | 'BTN') =>
-      buildContext({ street: 'preflop', hole: parseCards(hole), board: [], opponents: 5, pot: 15, toCall: 10, bigBlind: 10, heroStack: 1000, iterations: 500, position });
+    const ctx = (hole: string, position: 'UTG' | 'BTN' | 'CO', facingRaise = false) =>
+      buildContext({ street: 'preflop', hole: parseCards(hole), board: [], opponents: 5, pot: facingRaise ? 35 : 15, toCall: facingRaise ? 20 : 10, bigBlind: 10, heroStack: 1000, iterations: 500, position });
     expect(recommend(ctx('6s 4h', 'UTG')).move).toBe('fold');
     expect(recommend(ctx('6s 5s', 'UTG')).move).toBe('raise');
     expect(recommend(ctx('Ks 8d', 'UTG')).move).toBe('fold');
     expect(recommend(ctx('Ks 8d', 'BTN')).move).toBe('raise');
+    expect(recommend(ctx('As 9d', 'CO')).move).toBe('raise');
+    const facingRaise = recommend(ctx('As 9d', 'CO', true));
+    expect(facingRaise.move).toBe('fold');
+    expect(facingRaise.why).toContain('The cutoff opening chart says raise when folded to you; facing a raise is a different decision.');
   });
 });
 

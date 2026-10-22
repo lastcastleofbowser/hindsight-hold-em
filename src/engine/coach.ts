@@ -283,7 +283,10 @@ function bluffSpot(ctx: DecisionContext, eq: number): Recommendation | null {
 /** Pre-flop advice from hand strength alone, when the position charts don't cover the spot. */
 function generalPreflop(ctx: DecisionContext, facingRaise: boolean, need: number): Recommendation {
   const { tier, notation } = ctx.start;
-  if (tier === 'Premium') return { move: 'raise', acceptable: ['raise', 'bet'], why: `${notation} is a premium hand — raise to build the pot and thin the field.` };
+  const raisedPotNote = facingRaise && ctx.position
+    ? ` The ${POSITION_NAMES[ctx.position].toLowerCase()} opening chart says ${chartAction(chartFor(ctx.position), notation)} when folded to you; facing a raise is a different decision.`
+    : '';
+  if (tier === 'Premium') return { move: 'raise', acceptable: ['raise', 'bet'], why: `${notation} is a premium hand — raise to build the pot and thin the field.${raisedPotNote}` };
   if (!facingRaise) {
     if (tier === 'Strong') return { move: 'raise', acceptable: ['raise', 'bet'], why: `${notation} is strong enough to open with a raise.` };
     if (ctx.toCall === 0)
@@ -293,9 +296,9 @@ function generalPreflop(ctx: DecisionContext, facingRaise: boolean, need: number
     if (tier === 'Playable') return { move: 'raise', acceptable: ['raise', 'bet', 'fold'], why: `${notation} is playable — raise to take the lead.` };
     return { move: 'fold', acceptable: ['fold'], why: `${notation} is ${tier.toLowerCase()} — it loses money over time from here.` };
   }
-  if (tier === 'Strong') return { move: 'call', acceptable: ['call', 'raise'], why: `${notation} is strong enough to continue against a raise.` };
-  if (tier === 'Playable' && need <= 0.25) return { move: 'call', acceptable: ['call', 'fold'], why: `${notation} can call a small raise and see a flop.` };
-  return { move: 'fold', acceptable: ['fold'], why: `${notation} is too weak to call a raise.` };
+  if (tier === 'Strong') return { move: 'call', acceptable: ['call', 'raise'], why: `${notation} is strong enough to continue against a raise.${raisedPotNote}` };
+  if (tier === 'Playable' && need <= 0.25) return { move: 'call', acceptable: ['call', 'fold'], why: `${notation} can call a small raise and see a flop.${raisedPotNote}` };
+  return { move: 'fold', acceptable: ['fold'], why: `${notation} is too weak to call a raise.${raisedPotNote}` };
 }
 
 const hasStrongDraw = (ctx: DecisionContext) =>

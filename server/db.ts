@@ -1,4 +1,5 @@
-import { mkdirSync, readFileSync, renameSync, writeFileSync, existsSync } from 'node:fs';
+import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
+import { chmodSync, mkdirSync, readFileSync, renameSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import initSqlJs, { type Database, type SqlValue } from 'sql.js';
 
@@ -16,6 +17,8 @@ const SCHEMA = `
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  email TEXT,
+  email_verified INTEGER NOT NULL DEFAULT 0,
   password_hash TEXT NOT NULL,
   created_at INTEGER NOT NULL
 );
@@ -54,9 +57,53 @@ CREATE TABLE IF NOT EXISTS game_events (
 );
 CREATE INDEX IF NOT EXISTS idx_game_players_user ON game_players(user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  token_hash TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  expires_at INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_password_reset_user ON password_reset_tokens(user_id);
+CREATE TABLE IF NOT EXISTS email_verification_tokens (
+  token_hash TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_email_verification_user ON email_verification_tokens(user_id);
 `;
 
+const FILE_HEADER = Buffer.from('HHDBENC1');
+const SQLITE_HEADER = Buffer.from('SQLite format 3\0');
+const IV_BYTES = 12;
+const TAG_BYTES = 16;
+
 export type Params = SqlValue[];
+
+function encryptDatabase(data: Uint8Array, key: Buffer): Buffer {
+  const iv = randomBytes(IV_BYTES);
+  const cipher = createCipheriv('aes-256-gcm', key, iv);
+  const encrypted = Buffer.concat([cipher.update(data), cipher.final()]);
+  return Buffer.concat([FILE_HEADER, iv, cipher.getAuthTag(), encrypted]);
+}
+
+function decryptDatabase(data: Buffer, key: Buffer): { bytes: Buffer; legacy: boolean } {
+  if (!data.subarray(0, FILE_HEADER.length).equals(FILE_HEADER)) {
+    if (!data.subarray(0, SQLITE_HEADER.length).equals(SQLITE_HEADER)) throw new Error('Unrecognized account database format; the stored file was not changed.');
+    return { bytes: data, legacy: true };
+  }
+  try {
+    const ivStart = FILE_HEADER.length;
+    const tagStart = ivStart + IV_BYTES;
+    const bodyStart = tagStart + TAG_BYTES;
+    const decipher = createDecipheriv('aes-256-gcm', key, data.subarray(ivStart, tagStart));
+    decipher.setAuthTag(data.subarray(tagStart, bodyStart));
+    return { bytes: Buffer.concat([decipher.update(data.subarray(bodyStart)), decipher.final()]), legacy: false };
+  } catch {
+    throw new Error('Cannot decrypt the account database. Check DATA_ENCRYPTION_KEY; the stored file was not changed.');
+  }
+}
 
 export class Store {
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -64,16 +111,26 @@ export class Store {
   private constructor(
     private db: Database,
     private file: string | null,
+    private encryptionKey: Buffer | null,
   ) {}
 
-  /** Opens (or creates) the database file. Pass null for an in-memory database (tests). */
-  static async open(file: string | null): Promise<Store> {
+  /** Opens an encrypted database file, or an in-memory database when file is null. */
+  static async open(file: string | null, encryptionKey?: Buffer): Promise<Store> {
+    if (file && (!encryptionKey || encryptionKey.length !== 32)) {
+      throw new Error('A 32-byte DATA_ENCRYPTION_KEY is required for a persistent account database.');
+    }
     const SQL = await initSqlJs();
-    const data = file && existsSync(file) ? readFileSync(file) : undefined;
-    const db = new SQL.Database(data);
+    const stored = file && existsSync(file) ? decryptDatabase(readFileSync(file), encryptionKey!) : null;
+    const db = new SQL.Database(stored?.bytes);
     db.run('PRAGMA foreign_keys = ON;');
     db.exec(SCHEMA);
-    return new Store(db, file);
+    const columns = db.exec('PRAGMA table_info(users)')[0]?.values ?? [];
+    if (!columns.some((column) => column[1] === 'email')) db.run('ALTER TABLE users ADD COLUMN email TEXT');
+    if (!columns.some((column) => column[1] === 'email_verified')) db.run('ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0');
+    db.run('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email COLLATE NOCASE) WHERE email IS NOT NULL');
+    const store = new Store(db, file, file ? encryptionKey! : null);
+    if (stored?.legacy) store.flush();
+    return store;
   }
 
   run(sql: string, params: Params = []): void {
@@ -116,9 +173,11 @@ export class Store {
   /** Writes the database to disk now (also called on shutdown). */
   flush() {
     if (!this.file) return;
-    mkdirSync(dirname(this.file), { recursive: true });
+    mkdirSync(dirname(this.file), { recursive: true, mode: 0o700 });
     const tmp = `${this.file}.tmp`;
-    writeFileSync(tmp, this.db.export());
+    const data = this.db.export();
+    writeFileSync(tmp, this.encryptionKey ? encryptDatabase(data, this.encryptionKey) : data, { mode: 0o600 });
     renameSync(tmp, this.file);
+    chmodSync(this.file, 0o600);
   }
 }

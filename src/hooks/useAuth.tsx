@@ -16,7 +16,11 @@ interface AuthApi {
   token: string | null;
   status: AuthStatus;
   login: (username: string, password: string) => Promise<void>;
-  register: (username: string, password: string) => Promise<void>;
+  register: (username: string, email: string, password: string) => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<string>;
+  resetPassword: (token: string, password: string) => Promise<void>;
+  requestEmailVerification: (email: string) => Promise<string>;
+  verifyEmail: (token: string) => Promise<void>;
   logout: () => Promise<void>;
   /** Forget a token the server says is no longer valid. */
   expire: () => void;
@@ -109,7 +113,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (username: string, password: string) => accept(await api<AuthResponse>('/login', { method: 'POST', body: { username, password } })), [accept]);
-  const register = useCallback(async (username: string, password: string) => accept(await api<AuthResponse>('/register', { method: 'POST', body: { username, password } })), [accept]);
+  const register = useCallback(async (username: string, email: string, password: string) => accept(await api<AuthResponse>('/register', { method: 'POST', body: { username, email, password } })), [accept]);
+  const requestPasswordReset = useCallback(async (email: string) => (await api<{ message: string }>('/password-reset/request', { method: 'POST', body: { email } })).message, []);
+  const resetPassword = useCallback(async (token: string, password: string) => {
+    await api('/password-reset/complete', { method: 'POST', body: { token, password } });
+  }, []);
+  const requestEmailVerification = useCallback(async (email: string) => (await api<{ message: string }>('/email-verification/request', { method: 'POST', body: { email }, token })).message, [token]);
+  const verifyEmail = useCallback(async (verifyToken: string) => {
+    await api('/email-verification/complete', { method: 'POST', body: { token: verifyToken } });
+  }, []);
   const expire = useCallback(() => {
     writeToken(null);
     setToken(null);
@@ -121,7 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (old) await api('/logout', { method: 'POST', token: old }).catch(() => {});
   }, [token, expire]);
 
-  const value = useMemo(() => ({ user, token, status, login, register, logout, expire }), [user, token, status, login, register, logout, expire]);
+  const value = useMemo(() => ({ user, token, status, login, register, requestPasswordReset, resetPassword, requestEmailVerification, verifyEmail, logout, expire }), [user, token, status, login, register, requestPasswordReset, resetPassword, requestEmailVerification, verifyEmail, logout, expire]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

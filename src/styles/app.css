@@ -641,6 +641,9 @@ main > * { max-width: 1440px; margin-left: auto; margin-right: auto; }
 .auth-form { display: flex; flex-direction: column; gap: 12px; }
 .auth-password-toggle { display: flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: 13px; }
 .auth-password-toggle input { width: auto; margin: 0; }
+.auth-link { align-self: flex-start; padding: 0; border: 0; background: none; color: var(--gold); font-size: 13px; text-decoration: underline; }
+.account-menu { position: relative; }
+.account-menu .burger-menu { left: auto; right: 0; }
 .profile { display: flex; flex-direction: column; gap: 16px; }
 .profile-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .profile-head h1 { margin: 0; }

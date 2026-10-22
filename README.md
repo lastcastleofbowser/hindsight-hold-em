@@ -31,6 +31,12 @@ npm run build    # type-check + production build into dist/
 
 The server stores accounts and history in SQLite at `data/hindsight.sqlite` (git-ignored; change with `DATA_DIR`).
 
+For the server, copy `.env.example` to `.env`, set `DATA_ENCRYPTION_KEY` to a 32-byte key encoded as 64 hex characters (generate one with `openssl rand -hex 32`), and restrict the file with `chmod 600 .env`. Keep this key backed up and private; the server refuses to open the database without it, and losing it makes the encrypted database unreadable. Existing plaintext databases are migrated to encrypted storage on first startup with the key. Passwords remain scrypt-hashed; usernames, emails, and other database contents are protected at rest with AES-256-GCM. The database file is created with owner-only permissions.
+
+Accounts now require an email address. Verification links are single-use and expire after 24 hours; password-reset links are sent only to verified addresses, expire after 30 minutes, and can be used once. In development, links are printed to the server terminal. For real email delivery, configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`, and optional `SMTP_USER`/`SMTP_PASS`. Set `APP_URL` to the public origin used in email links (including a temporary tunnel URL when testing remotely). Production startup requires SMTP configuration, a 64-character `DATA_ENCRYPTION_KEY`, and an HTTPS `APP_URL` matching the public site.
+
+Database encryption protects backups and stolen DB files, not a compromised server process or host. Use HTTPS, restrict server access, protect `.env` and backups, and keep the host and dependencies updated.
+
 **Deploying:** `dist/` is a static site for training only. For accounts and Friends, run `npm run build && npm run server` on a Node host with WebSockets and HTTPS, and give `DATA_DIR` a persistent disk. Behind a reverse proxy, set `TRUST_PROXY=1`.
 
 ## Iteration 7: Account setup and deployment
@@ -38,6 +44,12 @@ The server stores accounts and history in SQLite at `data/hindsight.sqlite` (git
 - The account form can show or hide passwords while logging in or creating an account, including the confirmation field.
 - Registration and account-server failures provide actionable messages. In development, run `npm run server` in a second terminal alongside `npm run dev`; backend validation messages, such as the minimum password length or a taken username, are shown directly.
 - Browser-first deployment is recommended. The existing web app can be installed as a PWA without maintaining a separate desktop app. Accounts and Friends still require the Node server, WebSocket support, HTTPS, and persistent storage described above.
+
+## Iteration 8: Password recovery and range alignment
+
+- Registration collects an email address and verifies it with a one-use, 24-hour link. Password recovery uses enumeration-safe requests and one-use, 30-minute tokens; successful resets replace the scrypt password hash and revoke existing sessions. SMTP delivery is configurable; development links are printed to the server terminal.
+- Persistent SQLite files are encrypted with AES-256-GCM and restricted to owner-only permissions. Existing plaintext DB files migrate on startup. The encryption key is external configuration and must be backed up; at-rest encryption does not protect a compromised running host.
+- The coach and Ranges view use the same preflop chart decision. A9o in the CO is a raise when action folds to you. Facing a raise is a different decision, and the coach now explains that distinction rather than implying the opening chart applies to a raised pot.
 
 ## How the coach works
 
@@ -63,4 +75,3 @@ Built with TypeScript, React 18, Vite 5, Vitest, plain CSS, `ws` and `sql.js`.
 - Range charts cover the first pre-flop decision only (raise first in, big blind defence).
 - The Hand Review chat answers a fixed set of question types.
 - Friends tables live in server memory; a restart ends hands in progress (finished hands are saved).
-- No password reset yet.

@@ -10,7 +10,11 @@ const date = (ms: number) => new Date(ms).toLocaleDateString(undefined, { day: '
 /** Your account: lifetime results with friends, progress over time, and recent games. */
 export function ProfileView({ active }: { active: boolean }) {
   const online = useOnline();
-  const { user, token, status, logout, expire } = useAuth();
+  const { user, token, status, expire } = useAuth();
+  const [resetFlow] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.has('reset') || params.has('verify');
+  });
   const [profile, setProfile] = useState<Profile | null>(null);
   const [error, setError] = useState('');
 
@@ -30,6 +34,7 @@ export function ProfileView({ active }: { active: boolean }) {
     };
   }, [active, token, user, expire]);
 
+  if (resetFlow) return <AuthPanel reason="Use the one-time link from your email to set a new password." />;
   if (!online || status === 'unreachable') {
     return (
       <div className="panel welcome">
@@ -48,9 +53,6 @@ export function ProfileView({ active }: { active: boolean }) {
           <h1>{user.username}</h1>
           {profile && <p className="muted small">Member since {date(profile.memberSince)}</p>}
         </div>
-        <button className="btn ghost" onClick={logout}>
-          Log out
-        </button>
       </div>
       {error && <div className="error-banner">{error}</div>}
       {!profile ? (

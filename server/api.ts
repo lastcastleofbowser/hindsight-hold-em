@@ -4,7 +4,11 @@ import type { History } from './history';
 
 /**
  * JSON API for accounts and history:
- *   POST /api/register  { username, password } → { user, token }
+ *   POST /api/register  { username, email, password } → { user, token }
+ *   POST /api/password-reset/request { email }
+ *   POST /api/password-reset/complete { token, password }
+ *   POST /api/email-verification/request (Authorization: Bearer <token>)
+ *   POST /api/email-verification/complete { token }
  *   POST /api/login     { username, password } → { user, token }
  *   POST /api/logout                            (Authorization: Bearer <token>)
  *   GET  /api/me                                → { user }
@@ -69,7 +73,21 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse, path:
   try {
     if (req.method === 'POST' && path === '/api/register') {
       const body = await readJson(req);
-      send(res, 201, await auth.register(body.username, body.password));
+      send(res, 201, await auth.register(body.username, body.email, body.password));
+    } else if (req.method === 'POST' && path === '/api/password-reset/request') {
+      const body = await readJson(req);
+      send(res, 200, { message: await auth.requestPasswordReset(body.email, clientIp(req)) });
+    } else if (req.method === 'POST' && path === '/api/password-reset/complete') {
+      const body = await readJson(req);
+      await auth.resetPassword(body.token, body.password);
+      send(res, 200, { ok: true });
+    } else if (req.method === 'POST' && path === '/api/email-verification/request') {
+      const body = await readJson(req);
+      send(res, 200, { message: await auth.requestEmailVerification(requireUser().id, body.email) });
+    } else if (req.method === 'POST' && path === '/api/email-verification/complete') {
+      const body = await readJson(req);
+      auth.verifyEmail(body.token);
+      send(res, 200, { ok: true });
     } else if (req.method === 'POST' && path === '/api/login') {
       const body = await readJson(req);
       send(res, 200, await auth.login(body.username, body.password, clientIp(req)));
