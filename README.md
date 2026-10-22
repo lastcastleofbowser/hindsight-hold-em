@@ -33,6 +33,12 @@ The server stores accounts and history in SQLite at `data/hindsight.sqlite` (git
 
 **Deploying:** `dist/` is a static site for training only. For accounts and Friends, run `npm run build && npm run server` on a Node host with WebSockets and HTTPS, and give `DATA_DIR` a persistent disk. Behind a reverse proxy, set `TRUST_PROXY=1`.
 
+## Iteration 7: Account setup and deployment
+
+- The account form can show or hide passwords while logging in or creating an account, including the confirmation field.
+- Registration and account-server failures provide actionable messages. In development, run `npm run server` in a second terminal alongside `npm run dev`; backend validation messages, such as the minimum password length or a taken username, are shown directly.
+- Browser-first deployment is recommended. The existing web app can be installed as a PWA without maintaining a separate desktop app. Accounts and Friends still require the Node server, WebSocket support, HTTPS, and persistent storage described above.
+
 ## How the coach works
 
 No AI model or internet: the coach is rule-based TypeScript. It combines exact hand evaluation, Monte Carlo equity, opponent reads built from their betting, pre-flop range charts and standard rules (pot odds, value thresholds, stack depth). Same spot, same answer.

@@ -63,10 +63,17 @@ export async function api<T>(path: string, opts: { method?: 'GET' | 'POST'; body
       body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
     });
   } catch {
-    throw new ApiError("Can't reach the Hindsight Hold'em server.", 0);
+    throw new ApiError("Can't reach the account server. In local development, run `npm run server` in a second terminal.", 0);
   }
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new ApiError(data.error ?? 'Something went wrong.', res.status);
+  const isJson = (res.headers.get('content-type') ?? '').includes('application/json');
+  const data: { error?: string } = isJson ? await res.json().catch(() => ({})) : {};
+  if (!res.ok) {
+    const message = data.error ?? (res.status >= 500
+      ? `The account server returned an unreadable response (HTTP ${res.status}). In local development, run \`npm run server\` in a second terminal.`
+      : `The account server returned an unexpected response (HTTP ${res.status}).`);
+    throw new ApiError(message, res.status);
+  }
+  if (!isJson) throw new ApiError('The account server returned an unreadable response. Please check the server and try again.', res.status);
   return data as T;
 }
 

@@ -8,6 +8,7 @@ export function AuthPanel({ reason }: { reason: string }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [showPasswords, setShowPasswords] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -45,7 +46,7 @@ export function AuthPanel({ reason }: { reason: string }) {
           <label className="field">
             Password
             <input
-              type="password"
+              type={showPasswords ? 'text' : 'password'}
               autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -56,13 +57,17 @@ export function AuthPanel({ reason }: { reason: string }) {
             <>
               <label className="field">
                 Confirm password
-                <input type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
+                <input type={showPasswords ? 'text' : 'password'} autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
               </label>
               <p className="small muted" style={{ margin: 0 }}>
                 Usernames: 3–20 letters, numbers or underscores (shown to friends at the table). Passwords: at least 8 characters.
               </p>
             </>
           )}
+          <label className="auth-password-toggle">
+            <input type="checkbox" checked={showPasswords} onChange={(e) => setShowPasswords(e.target.checked)} />
+            Show {mode === 'register' ? 'passwords' : 'password'}
+          </label>
           {error && (
             <div className="error" role="alert">
               {error}
